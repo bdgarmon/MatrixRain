@@ -1,0 +1,16 @@
+{
+  "LabTitle": "AFTER SIX LAB",
+  "NodeLabel": "AUTO",
+  "ExperimentLabel": "DEX EXPERIENCE LAB",
+  "WorkloadLabel": "MATRIX DISPLAY",
+  "WatchProcess": "",
+  "StateFile": "state.json",
+  "FramesPerSecond": 15,
+  "SampleSeconds": 5,
+  "Monitor": 0,
+  "Fullscreen": true,
+  "RainEnabled": true,
+  "KeepAwake": true,
+  "EnableCsv": false,
+  "EnableGpu": true
+}

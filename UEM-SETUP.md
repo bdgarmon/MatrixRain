@@ -1,0 +1,116 @@
+# Matrix Rain 2.5.0 — minimum UEM setup
+
+Use this checklist after uploading **MatrixRain-2.5.0-UEM.zip** as a Windows internal application (or a new version of an existing application). It follows the Workspace ONE application editor in order: **Details → Files → Deployment Options**. Fields below are listed top to bottom. Copy command text only, without Markdown backticks.
+
+## 1. Details
+
+| Field | Enter / select |
+|---|---|
+| Name | **Matrix Rain** |
+| Managed By | Select the organization group for this deployment. |
+| Application ID | Keep the UEM-generated value; retain the existing application identity for upgrades. |
+| App Version | **2.5.0.0** |
+| Build Version | Leave the generated value. |
+| Uploaded UEM Version | Set the four boxes to **2 · 5 · 0 · 0**. Correct an automatic value such as **2.5.1.0**. |
+| Assignments Copied From | Leave the existing previous-version value. |
+| Latest Version | Leave the displayed previous-version value. |
+| Retire Previous Versions | For an upgrade, keep checked to replace the previous version. |
+| Supported Processor Architecture | **64-bit only**; deselect 32-bit, ARM64 and ARM. |
+| Is Beta | **No** |
+| Change Log / Categories | Optional; leave blank. |
+| Minimum OS | Select the minimum Windows version supported by your deployment. This release was device-tested on Windows 11 x64; .NET Framework 4.8+ is required. This selector does not install prerequisites. |
+| Supported Models | **Desktop** |
+| Default Scheme | Leave unchanged. |
+| Description / Keywords / URL / Support Email / Support Phone | Optional; leave blank. |
+
+The devices need **.NET Framework 4.8 or 4.8.1**; Windows 11 already includes a compatible version. **.NET 10 is a separate runtime and is not required by Matrix Rain.** Office Workday additionally needs desktop Excel/PowerPoint, New Outlook and at least one of Edge/Chrome, already configured for the signed-in user.
+
+## 2. Files
+
+| Field / section | Enter / select |
+|---|---|
+| Application File | Confirm **MatrixRain-2.5.0-UEM.zip**. |
+| App Dependencies | No bundled dependencies. Deploy Office and other prerequisites separately if needed. |
+| App Transforms | Leave empty. |
+| App Patches | Leave empty. |
+| App Uninstall Process → Use Custom Script for MSI | **Yes**, for this ZIP-based application. |
+| Custom Script Type | **Input** |
+| Uninstall Command | Paste the single line below. |
+
+```text
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& (Join-Path $env:ProgramW6432 'AfterSix\MatrixRainLab\Uninstall.ps1')"
+```
+
+The installed `MatrixRainLab` path is intentional: it preserves compatibility with existing installations.
+
+## 3. Deployment Options
+
+### When To Install
+
+| Field | Enter / select |
+|---|---|
+| Data Contingencies | None. |
+| Disk Space Required | **0 KB** |
+| Device Power Required | **0** |
+| RAM Required | **0 MB** |
+
+These zero values leave the existing pilot's deployment gates unrestricted; they are not workload resource requirements.
+
+### How To Install
+
+| Field | Enter / select |
+|---|---|
+| Install Context | **Device** |
+| Install Command | Paste the install line below. |
+| Launch Type | **Launch Path** |
+| Launch Command | Leave blank. Open Matrix Rain from the Windows Start menu after installation. |
+| Admin Privileges | **Yes** — for installation. |
+| Device Restart | **Do not restart** |
+| Uninstall Device Restart | **Do not restart** |
+| Retry Count | **3** |
+| Retry Interval | **5** minutes |
+| Install Timeout | **5** minutes |
+| Installer Reboot Exit Code | **3010** |
+| Installer Success Exit Code | **0** |
+
+**Install Command:**
+
+```text
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '.\MatrixRain-2.5.0-UEM.zip' -DestinationPath '.\payload-v250' -Force; & '.\payload-v250\MatrixRain\deployment\Install.ps1'"
+```
+
+The last character is a double quote. Do not append backticks. The same line is in **MatrixRain-2.5.0-UEM-install-command.txt** beside this guide. This installer does not request a reboot; do not use **0** for the reboot exit code.
+
+### When To Call Install Complete
+
+| Field | Enter / select |
+|---|---|
+| Use Additional Criteria | **Yes** |
+| Identify Application By | **Using Custom Script** |
+| Command to run the script | Paste the detection line below. |
+| Script file | Upload **Detect-MatrixRain-2.5.0.ps1** from the release assets. |
+| Success exit code | **0** |
+
+```text
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ".\Detect-MatrixRain-2.5.0.ps1"
+```
+
+Use this custom script in place of the individual file criteria. It checks all three executable versions and the required configuration/control files.
+
+## 4. Save & Assign
+
+On Images, upload MatrixRain-Icon.png from the release assets for a new application; retain the existing icon for upgrades. Terms of Use and Repository do not require app-specific entries. Click **Save & Assign**, verify the intended pilot assignment and automatic delivery, then complete the console's save/publish flow.
+
+After UEM reports Installed, open **Matrix Rain** normally from Start and confirm **v2.5.0**. Office Workday starts only when you select it and approve **Go**; installation does not start a workload. For the first test, set its duration to **600 seconds**.
+
+---
+
+[Full deployment reference](deployment/UEM-DEPLOYMENT.md) · [Office Workday behavior](OFFICE-WORKDAY.md)
+
+Field order is based on the Workspace ONE application editor. Installation privilege and timing units were cross-checked against [Omnissa's application configuration documentation](https://docs.omnissa.com/SoftwareDistributionManagement-VSaaS/AddWindowsapplicationsfromtheEnterpriseApplicationRepository).
+
+Office Workday now opens live HTTPS websites. The installer supplies browser-sites.json automatically; no additional UEM upload is required. Existing custom site lists are preserved.
+
+After deployment, follow **MatrixRain-2.5.0/FOREGROUND-PILOT.md** for the short focus pilot and longer workbook/cleanup verification.
+
+Version 2.5.0 verifies browser startup before Office/Outlook launch. Use BROWSER-STARTUP.md in the source folder for the device pilot and diagnostic fields.
