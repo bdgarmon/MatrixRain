@@ -36,8 +36,14 @@ namespace MatrixOfficeActor {
         int serial;
         public Applications(string run,string output,OfficeProgress status,int seed,Action<string> logger,string dataDirectory,Action<string> stage) {
             startupStage=stage; random=new Random(seed); progress=status; local=output; log=logger; marker="MatrixLab "+run.Substring(0,8);
-            if(Type.GetTypeFromProgID("Excel.Application")==null || Type.GetTypeFromProgID("PowerPoint.Application")==null)
-                throw new InvalidOperationException("Desktop Excel and PowerPoint must be installed and activated for this user.");
+            bool word=Type.GetTypeFromProgID("Word.Application")!=null, excelInstalled=Type.GetTypeFromProgID("Excel.Application")!=null, powerpointInstalled=Type.GetTypeFromProgID("PowerPoint.Application")!=null;
+            if(!OfficeRequirements.Met(word,excelInstalled,powerpointInstalled)) {
+                string missing=OfficeRequirements.Missing(word,excelInstalled,powerpointInstalled);
+                progress.Activity="Office prerequisites missing: "+missing;
+                progress.Error="Office Workday was not successful because required Microsoft 365 desktop applications are missing: "+missing+".";
+                LaunchOfficeRequirementNotice(run,missing);
+                throw new InvalidOperationException(progress.Error);
+            }
             edge=new[]{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)}
                 .Select(p=>Path.Combine(p,"Microsoft","Edge","Application","msedge.exe")).FirstOrDefault(File.Exists);
             chrome=new[]{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}
@@ -65,6 +71,14 @@ namespace MatrixOfficeActor {
             foreach(string type in new[]{"txt","csv","xlsx","pptx","html"}) files[type]=new List<string>();
             log("Resolved Desktop="+desktop+"; Documents="+documents+"; Edge="+edge+"; Outlook="+outlook);
         }
+        void LaunchOfficeRequirementNotice(string run,string missing) {
+            string folder=Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string path=Path.Combine(folder,"MatrixRain-Office-Configuration-Required-"+run.Substring(0,8)+".txt");
+            const string message="This PC is not properly configured for this test. Install Microsoft 365 apps and retry.";
+            File.WriteAllText(path,message+Environment.NewLine+Environment.NewLine+"Missing: "+missing+Environment.NewLine);
+            Process.Start(new ProcessStartInfo("notepad.exe","\""+path.Replace("\"","\"\"")+"\"") {UseShellExecute=true});
+            log("OFFICE REQUIREMENTS MISSING: "+missing+"; opened Notepad warning at "+path);
+        }
         static string Root(Environment.SpecialFolder known,string id) {
             string root=Environment.GetFolderPath(known);
             if(String.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) throw new DirectoryNotFoundException("User known folder unavailable: "+known);
@@ -80,6 +94,7 @@ namespace MatrixOfficeActor {
             else if(action=="break") { log("Reading/break interval: applications remain open."); return; }
             else if(action=="browse") Browse();
             else if(action=="view-outlook") { OpenOutlook(); if(outlookReady && outlookWindow!=IntPtr.Zero) Focus(outlookWindow,"Outlook"); }
+            else if(action=="draft-outlook") { OpenOutlook(); if(outlookReady && outlookWindow!=IntPtr.Zero && Focus(outlookWindow,"Outlook")) { if(OutlookDraft.TryCreateAndClose(outlookWindow,random.Next(),log)) progress.OutlookDrafts++; } }
             else {
                 string type=action.EndsWith("excel") ? "xlsx" : action.EndsWith("powerpoint") ? "pptx" : action.EndsWith("csv") ? "csv" : "txt";
                 bool create=(action.StartsWith("create-") && files[type].Count<12) || files[type].Count==0;
@@ -236,12 +251,13 @@ namespace MatrixOfficeActor {
             outlookReady=true; progress.OutlookPreparation="Setup grace ended; account readiness not automatically verified";
             log(progress.OutlookPreparation); return false;
         }
-        void Focus(IntPtr window,string name) {
-            if(window==IntPtr.Zero || !Native.Exists(window) || !Native.DesktopAvailable() || Native.InputIdleSeconds()<15) return;
+        bool Focus(IntPtr window,string name) {
+            if(window==IntPtr.Zero || !Native.Exists(window) || !Native.DesktopAvailable() || Native.InputIdleSeconds()<15) return false;
             progress.ForegroundTarget=name; progress.ForegroundAttempts++;
             string detail; bool ok=Native.Foreground(window,out detail);
             if(ok) progress.ForegroundConfirmed++; else progress.ForegroundDenied++;
             log("FOREGROUND "+name+" / "+(ok ? "confirmed" : "not granted by Windows")+" / PID "+Native.WindowPid(window)+" / "+detail);
+            return ok;
         }
         public void RotateForeground() {
             if(DateTime.UtcNow<nextFocus) return;
@@ -252,7 +268,11 @@ namespace MatrixOfficeActor {
             foreach(var h in browserWindows.Where(h=>Native.Tagged(h,marker))) targets.Add(new KeyValuePair<IntPtr,string>(h,"Browser"));
             if(targets.Count==0) return;
             targets=FocusRotation.OnePerApplication(targets);
-            var target=targets[focusIndex++ % targets.Count]; Focus(target.Key,target.Value);
+            var target=targets[focusIndex++ % targets.Count];
+            if(Focus(target.Key,target.Value) && target.Value=="Browser") {
+                if(Native.NextBrowserTab(target.Key)) { progress.BrowserTabSwitches++; log("BROWSER TAB NEXT / PID "+Native.WindowPid(target.Key)); }
+                else log("BROWSER TAB NEXT skipped: browser window is no longer confirmed foreground or user input resumed.");
+            }
             nextFocus=DateTime.UtcNow.AddSeconds(random.Next(30,61));
         }
         void Browse() {

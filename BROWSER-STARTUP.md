@@ -1,4 +1,4 @@
-# Matrix Rain 2.5.0 — browser startup correction
+# Matrix Rain 2.6.0 — browser startup correction
 
 The four latest 2.0.1.0 device exports all failed before any foreground attempt. Excel and PowerPoint opened, but the browser launcher exited before exposing a window. The old code broke out immediately instead of waiting for another process to own the window. The exports do not establish whether this was a normal handoff, a browser startup error or an enforced browser policy.
 
@@ -17,6 +17,6 @@ Microsoft documents that Edge's managed [UserDataDir policy](https://learn.micro
 
 ## Windows pilot
 
-Deploy 2.5.0.0 using the matching detection script. Start a 60-second baseline plus 600-second Office Workday. Confirm browser startup succeeds, then Office and Outlook open. After Outlook preparation, watch several foreground rotations and compare DEX foreground durations. Export logs even after success. Look for BROWSER verified profile owner and confirmed FOREGROUND entries for each selected app.
+Deploy 2.6.0.0 using the matching detection script. Start a 60-second baseline plus 600-second Office Workday. Confirm browser startup succeeds, then Office and Outlook open. After Outlook preparation, watch several foreground rotations and compare DEX foreground durations. Export logs even after success. Look for BROWSER verified profile owner and confirmed FOREGROUND entries for each selected app.
 
 If discovery fails, the export should now distinguish launcher exit from missing profile ownership, unreadable WMI data or a conflicting registry policy. Native Windows browser handoff and foreground behavior could not be exercised on the macOS build host. After the short pilot succeeds, run at least 90 minutes to exercise Office workbook turnover and the first scheduled restart.

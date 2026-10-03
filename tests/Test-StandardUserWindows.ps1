@@ -10,7 +10,7 @@ $pf = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
 $app = Join-Path $pf 'AfterSix\MatrixRainLab'
 $data = Join-Path $env:ProgramData 'AfterSix\MatrixRainLab'
 foreach ($name in @('MatrixRainLab.exe','MatrixLabWorker.exe')) {
-    if ([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $app $name)).FileVersion -ne '2.5.0.0') { throw "Wrong version: $name" }
+    if ([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $app $name)).FileVersion -ne '2.6.0.0') { throw "Wrong version: $name" }
 }
 Get-Content -LiteralPath (Join-Path $data 'config.json') -Raw | ConvertFrom-Json | Out-Null
 $runtime = Join-Path $data 'workloads'
@@ -24,7 +24,7 @@ $denied = $false
 try { [IO.File]::WriteAllText($probe, 'probe') } catch [UnauthorizedAccessException] { $denied = $true }
 if (!$denied) {
     Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
-    throw 'Standard user can write worker control files. Repair using the 2.5.0 installer.'
+    throw 'Standard user can write worker control files. Repair using the 2.6.0 installer.'
 }
 $shell = New-Object -ComObject WScript.Shell
 $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Matrix Rain.lnk'))
@@ -34,5 +34,5 @@ Add-Type -AssemblyName System.Drawing
 $icon = [Drawing.Icon]::ExtractAssociatedIcon($exe)
 if ($null -eq $icon) { throw 'Cannot extract app icon.' }
 $icon.Dispose()
-Write-Output 'PASS: 2.5.0 binaries, standard-user status read access, protected worker control files and Start menu icon.'
-Write-Output 'Next: open the display, confirm v2.5.0, cancel Go once, then approve Go with a different admin account and verify baseline -> workload -> completion. Export logs as the desktop user.'
+Write-Output 'PASS: 2.6.0 binaries, standard-user status read access, protected worker control files and Start menu icon.'
+Write-Output 'Next: open the display, confirm v2.6.0, cancel Go once, then approve Go with a different admin account and verify baseline -> workload -> completion. Export logs as the desktop user.'

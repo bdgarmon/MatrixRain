@@ -68,5 +68,32 @@ namespace MatrixOfficeActor {
             detail=trace+" after HWND="+GetForegroundWindow().ToInt64()+" after PID="+WindowPid(GetForegroundWindow());
             return ok;
         }
+        static bool SendKeys(Input[] inputs) {
+            if(inputs==null || inputs.Length==0 || !DesktopAvailable() || InputIdleSeconds()<15) return false;
+            var prior=new LastInput {Size=(uint)Marshal.SizeOf(typeof(LastInput))}; if(!GetLastInputInfo(ref prior)) return false;
+            uint sent=SendInput((uint)inputs.Length,inputs,Marshal.SizeOf(typeof(Input)));
+            if(sent>0) inputClock.Record(unchecked((uint)Environment.TickCount),prior.Tick);
+            return sent==inputs.Length;
+        }
+        static Input Key(ushort key,bool up=false) { return new Input {Type=1,Keyboard=new KeyboardInput {Key=key,Flags=up ? 2U : 0U,Time=unchecked((uint)Environment.TickCount)}}; }
+        internal static bool NextBrowserTab(IntPtr window) {
+            if(!ConfirmFocus(window) || !SafeToFocus(window)) return false;
+            return SendKeys(new[]{Key(0x11),Key(0x09),Key(0x09,true),Key(0x11,true)});
+        }
+        internal static bool NewOutlookMessage(IntPtr window) {
+            if(!ConfirmFocus(window) || !SafeToFocus(window)) return false;
+            return SendKeys(new[]{Key(0x11),Key(0x4E),Key(0x4E,true),Key(0x11,true)});
+        }
+        internal static bool CloseComposeWithEscape() { return SendKeys(new[]{Key(0x1B),Key(0x1B,true)}); }
+        internal static bool BoldComposeHeader() {
+            // The body must already be a UI-Automation-confirmed compose control.
+            // Select only the first generated line, then apply bold without invoking
+            // any Outlook send shortcut.
+            return SendKeys(new[]{
+                Key(0x11),Key(0x24),Key(0x24,true),Key(0x11,true),
+                Key(0x10),Key(0x23),Key(0x23,true),Key(0x10,true),
+                Key(0x11),Key(0x42),Key(0x42,true),Key(0x11,true)
+            });
+        }
     }
 }

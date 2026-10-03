@@ -19,5 +19,5 @@ if ($LASTEXITCODE -ne 0) { throw "Worker build failed: $LASTEXITCODE" }
 Write-Output "Built $workerOutput"
 
 $officeSources = Get-ChildItem (Join-Path $PSScriptRoot 'office\src') -Filter '*.cs' | Select-Object -ExpandProperty FullName
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ /warnaserror+ /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll /r:System.Management.dll "/win32icon:$PSScriptRoot\MatrixRainLab.ico" "/win32manifest:$PSScriptRoot\office.manifest" "/out:$PSScriptRoot\MatrixOfficeActor.exe" $officeSources $shared
+& $compiler /nologo /target:winexe /platform:x64 /optimize+ /warnaserror+ /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:Microsoft.CSharp.dll /r:System.Management.dll /r:UIAutomationClient.dll /r:UIAutomationTypes.dll "/win32icon:$PSScriptRoot\MatrixRainLab.ico" "/win32manifest:$PSScriptRoot\office.manifest" "/out:$PSScriptRoot\MatrixOfficeActor.exe" $officeSources $shared
 if ($LASTEXITCODE -ne 0) { throw "Office helper build failed: $LASTEXITCODE" }

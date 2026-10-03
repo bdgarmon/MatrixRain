@@ -26,7 +26,7 @@ Each device now supplies its own baseline observation interval before pressure b
 Legacy scripts retain their single-phase behavior unless Start-Workload.ps1 is given -BaselineSeconds. The scripts below are optional automation hooks for Freestyle workflows. They are no longer the primary way to control workloads. Use the main screen above for local operation.
 
 
-Upgrade the display package to 2.5.0 first. For central orchestration, use the appropriate file from `uem` in a **SYSTEM-context Freestyle script step** for that node. Give each run script at least a **12-minute execution timeout** for its default 10-minute run. These are script actions, not another application-install assignment.
+Upgrade the display package to 2.6.0 first. For central orchestration, use the appropriate file from `uem` in a **SYSTEM-context Freestyle script step** for that node. Give each run script at least a **12-minute execution timeout** for its default 10-minute run. These are script actions, not another application-install assignment.
 
 | Script | Node | What it does |
 |---|---|---|

@@ -1,24 +1,24 @@
-# Matrix Rain 2.5.0 — minimum UEM setup
+# Matrix Rain 2.6.0 — minimum UEM setup
 
-Use this checklist after uploading **MatrixRain-2.5.0-UEM.zip** as a Windows internal application (or a new version of an existing application). It follows the Workspace ONE application editor in order: **Details → Files → Deployment Options**. Fields below are listed top to bottom. Copy command text only, without Markdown backticks.
+Use this checklist after uploading **MatrixRain-2.6.0-UEM.zip** as a new version of the existing application. It follows your screenshots in order: **1.png → Details**, **2.png → Files**, **3.png → Deployment Options**. Fields below are listed top to bottom. Copy command text only, without Markdown backticks.
 
 ## 1. Details
 
 | Field | Enter / select |
 |---|---|
 | Name | **Matrix Rain** |
-| Managed By | Select the organization group for this deployment. |
-| Application ID | Keep the UEM-generated value; retain the existing application identity for upgrades. |
-| App Version | **2.5.0.0** |
+| Managed By | Keep the existing organization group. |
+| Application ID | Keep the existing value. |
+| App Version | **2.6.0.0** |
 | Build Version | Leave the generated value. |
 | Uploaded UEM Version | Set the four boxes to **2 · 5 · 0 · 0**. Correct an automatic value such as **2.5.1.0**. |
 | Assignments Copied From | Leave the existing previous-version value. |
 | Latest Version | Leave the displayed previous-version value. |
-| Retire Previous Versions | For an upgrade, keep checked to replace the previous version. |
+| Retire Previous Versions | Keep checked for this replacement version. |
 | Supported Processor Architecture | **64-bit only**; deselect 32-bit, ARM64 and ARM. |
 | Is Beta | **No** |
 | Change Log / Categories | Optional; leave blank. |
-| Minimum OS | Select the minimum Windows version supported by your deployment. This release was device-tested on Windows 11 x64; .NET Framework 4.8+ is required. This selector does not install prerequisites. |
+| Minimum OS | Keep **Windows 10 (10.0.10240)** as shown for the existing Windows 11 pilot. This selector does not install prerequisites. |
 | Supported Models | **Desktop** |
 | Default Scheme | Leave unchanged. |
 | Description / Keywords / URL / Support Email / Support Phone | Optional; leave blank. |
@@ -29,11 +29,11 @@ The devices need **.NET Framework 4.8 or 4.8.1**; Windows 11 already includes a 
 
 | Field / section | Enter / select |
 |---|---|
-| Application File | Confirm **MatrixRain-2.5.0-UEM.zip**. |
-| App Dependencies | No bundled dependencies. Deploy Office and other prerequisites separately if needed. |
+| Application File | Confirm **MatrixRain-2.6.0-UEM.zip**. |
+| App Dependencies | Leave empty for the existing pilot. |
 | App Transforms | Leave empty. |
 | App Patches | Leave empty. |
-| App Uninstall Process → Use Custom Script for MSI | **Yes**, for this ZIP-based application. |
+| App Uninstall Process → Use Custom Script for MSI | **Yes**, as shown in your screen. |
 | Custom Script Type | **Input** |
 | Uninstall Command | Paste the single line below. |
 
@@ -76,10 +76,10 @@ These zero values leave the existing pilot's deployment gates unrestricted; they
 **Install Command:**
 
 ```text
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '.\MatrixRain-2.5.0-UEM.zip' -DestinationPath '.\payload-v250' -Force; & '.\payload-v250\MatrixRain\deployment\Install.ps1'"
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '.\MatrixRain-2.6.0-UEM.zip' -DestinationPath '.\payload-v260' -Force; & '.\payload-v260\MatrixRain\deployment\Install.ps1'"
 ```
 
-The last character is a double quote. Do not append backticks. The same line is in **MatrixRain-2.5.0-UEM-install-command.txt** beside this guide. This installer does not request a reboot; do not use **0** for the reboot exit code.
+The last character is a double quote. Do not append backticks. The same line is in **MatrixRain-2.6.0-UEM-install-command.txt** beside this guide. This installer does not request a reboot; do not use **0** for the reboot exit code.
 
 ### When To Call Install Complete
 
@@ -88,29 +88,29 @@ The last character is a double quote. Do not append backticks. The same line is 
 | Use Additional Criteria | **Yes** |
 | Identify Application By | **Using Custom Script** |
 | Command to run the script | Paste the detection line below. |
-| Script file | Upload **Detect-MatrixRain-2.5.0.ps1** from the release assets. |
+| Script file | Upload **Detect-MatrixRain-2.6.0.ps1** from `outputs`. |
 | Success exit code | **0** |
 
 ```text
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ".\Detect-MatrixRain-2.5.0.ps1"
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ".\Detect-MatrixRain-2.6.0.ps1"
 ```
 
 Use this custom script in place of the individual file criteria. It checks all three executable versions and the required configuration/control files.
 
 ## 4. Save & Assign
 
-On Images, upload MatrixRain-Icon.png from the release assets for a new application; retain the existing icon for upgrades. Terms of Use and Repository do not require app-specific entries. Click **Save & Assign**, verify the intended pilot assignment and automatic delivery, then complete the console's save/publish flow.
+Keep the existing icon; no changes are required on Images, Terms of Use or Repository for this upgrade. Click **Save & Assign**, verify the intended pilot assignment and automatic delivery, then complete the console's save/publish flow.
 
-After UEM reports Installed, open **Matrix Rain** normally from Start and confirm **v2.5.0**. Office Workday starts only when you select it and approve **Go**; installation does not start a workload. For the first test, set its duration to **600 seconds**.
+After UEM reports Installed, open **Matrix Rain** normally from Start and confirm **v2.6.0**. Office Workday starts only when you select it and approve **Go**; installation does not start a workload. For the first test, set its duration to **600 seconds**.
 
 ---
 
-[Full deployment reference](deployment/UEM-DEPLOYMENT.md) · [Office Workday behavior](OFFICE-WORKDAY.md)
+[Full deployment reference](MatrixRain-2.6.0/deployment/UEM-DEPLOYMENT.md) · [Office Workday behavior](MatrixRain-2.6.0/OFFICE-WORKDAY.md)
 
-Field order is based on the Workspace ONE application editor. Installation privilege and timing units were cross-checked against [Omnissa's application configuration documentation](https://docs.omnissa.com/SoftwareDistributionManagement-VSaaS/AddWindowsapplicationsfromtheEnterpriseApplicationRepository).
+Field order is based on your supplied screenshots. Installation privilege and timing units were cross-checked against [Omnissa's application configuration documentation](https://docs.omnissa.com/SoftwareDistributionManagement-VSaaS/AddWindowsapplicationsfromtheEnterpriseApplicationRepository).
 
 Office Workday now opens live HTTPS websites. The installer supplies browser-sites.json automatically; no additional UEM upload is required. Existing custom site lists are preserved.
 
-After deployment, follow **MatrixRain-2.5.0/FOREGROUND-PILOT.md** for the short focus pilot and longer workbook/cleanup verification.
+After deployment, follow **MatrixRain-2.6.0/FOREGROUND-PILOT.md** for the short focus pilot and longer workbook/cleanup verification.
 
-Version 2.5.0 verifies browser startup before Office/Outlook launch. Use BROWSER-STARTUP.md in the source folder for the device pilot and diagnostic fields.
+Version 2.6.0 verifies browser startup before Office/Outlook launch. Use BROWSER-STARTUP.md in the source folder for the device pilot and diagnostic fields.

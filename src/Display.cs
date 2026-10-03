@@ -11,8 +11,8 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 [assembly: AssemblyTitle("Matrix Rain")]
 [assembly: AssemblyDescription("Local experiment display for the After Six DEX lab")]
-[assembly: AssemblyVersion("2.5.0.0")]
-[assembly: AssemblyFileVersion("2.5.0.0")]
+[assembly: AssemblyVersion("2.6.0.0")]
+[assembly: AssemblyFileVersion("2.6.0.0")]
 
 namespace MatrixRainLab {
     internal sealed class CsvLog {
@@ -140,7 +140,11 @@ namespace MatrixRainLab {
         void EnsureOfficeHelper() {
             var run=session.Latest;
             if(run!=null && run.RunId==officeLaunched && run.State!="RUNNING" && officeCompletionShown!=run.RunId) {
-                officeCompletionShown=run.RunId; WindowState=FormWindowState.Normal; Activate();
+                officeCompletionShown=run.RunId; WindowState=FormWindowState.Normal;
+                // A prerequisite warning intentionally leaves Notepad in front. Matrix
+                // Rain remains visible behind it with the failure result.
+                bool requirementsMissing=run.Office!=null && !String.IsNullOrEmpty(run.Office.Error) && run.Office.Error.IndexOf("required Microsoft 365 desktop applications",StringComparison.OrdinalIgnoreCase)>=0;
+                if(!requirementsMissing) Activate();
             }
             if(run==null || run.Mode!="office" || run.State!="RUNNING" || run.RunId==officeLaunched) return;
             using(var identity=System.Security.Principal.WindowsIdentity.GetCurrent()) {
@@ -311,7 +315,8 @@ namespace MatrixRainLab {
             TextLine(g,awake ? "AWAKE REQUEST ACTIVE" : "AWAKE REQUEST FAILED",small,awake ? green : white,800,662,265);
             string note=exportMessage ?? (run!=null && run.Mode=="office" && run.Office!=null ?
                 run.Office.State+" / "+run.Office.Activity+" / "+run.Office.Created+" files / "+run.Office.Saved+" saves" : session.Message);
-            if(run!=null && run.State=="FAILED") note="Test failed. Click Last result for the full error; Export logs includes diagnostics.";
+            if(run!=null && run.State=="FAILED") note=run.Mode=="office" && run.Office!=null && !String.IsNullOrEmpty(run.Office.Error) ?
+                "OFFICE WORKDAY NOT SUCCESSFUL: "+run.Office.Error : "Test failed. Click Last result for the full error; Export logs includes diagnostics.";
             if(run!=null && run.Stale) note="No worker heartbeat for over 20s. Progress frozen; check logs before retrying.";
             TextLine(g,note,small,green,36,687,1030);
             string last=session.LastResult==null ? "No finished test yet" : session.LastResult.State=="FAILED" ? session.LastResult.Mode+" / FAILED — click Last result for details" : session.LastResult.Summary;
@@ -324,7 +329,7 @@ namespace MatrixRainLab {
             if(last.Result!=null) text+="\r\nMemory: "+last.Result.AllocatedMiB+" MiB; written: "+last.Result.BytesWritten+" bytes"+(last.ScientificPi.HasValue ? "; Pi: "+last.ScientificPi.Value.ToString("F6") : "");
             if(last.Office!=null) text+="\r\nOffice files created: "+last.Office.Created+" / saves: "+last.Office.Saved+" / actions: "+last.Office.Actions+
                 "\r\nPaused desktop seconds: "+last.Office.PausedSeconds+" / skipped scheduled actions: "+last.Office.SkippedActions+
-                "\r\nForeground confirmed/attempted/denied: "+last.Office.ForegroundConfirmed+" / "+last.Office.ForegroundAttempts+" / "+last.Office.ForegroundDenied+"\r\nMouse/keyboard pause seconds: "+last.Office.InteractionPausedSeconds+"\r\nOutlook: "+last.Office.OutlookPreparation+"\r\nBrowsers: "+last.Office.Browsers+" / requested tabs: "+last.Office.BrowserTabsRequested+"\r\nApplication opens/closes: "+last.Office.AppOpens+" / "+last.Office.AppCloses+"\r\nDesktop: "+last.Office.Desktop+"\r\nDocuments: "+last.Office.Documents+"\r\n"+last.Office.Error;
+                "\r\nForeground confirmed/attempted/denied: "+last.Office.ForegroundConfirmed+" / "+last.Office.ForegroundAttempts+" / "+last.Office.ForegroundDenied+"\r\nMouse/keyboard pause seconds: "+last.Office.InteractionPausedSeconds+"\r\nOutlook: "+last.Office.OutlookPreparation+" / drafts: "+last.Office.OutlookDrafts+"\r\nBrowsers: "+last.Office.Browsers+" / requested tabs: "+last.Office.BrowserTabsRequested+" / tab switches: "+last.Office.BrowserTabSwitches+"\r\nApplication opens/closes: "+last.Office.AppOpens+" / "+last.Office.AppCloses+"\r\nDesktop: "+last.Office.Desktop+"\r\nDocuments: "+last.Office.Documents+"\r\n"+last.Office.Error;
             if(last.Phases!=null) foreach(var phase in last.Phases) text+="\r\n\r\n"+phase.Phase+": "+phase.StartedUtc+" > "+phase.EndedUtc+
                 "\r\n"+(phase.Result==null ? phase.Error : Metrics.Duration(phase.Result.ElapsedSeconds)+" / "+phase.Result.Reason);
             using(var dialog=new Form { Text="Last result — select text to copy", StartPosition=FormStartPosition.CenterParent,

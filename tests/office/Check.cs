@@ -45,6 +45,10 @@ class Check {
         inputClock.Record(100,50); Assert(inputClock.UserTick(100)==50,"Own Alt input does not trigger a false interaction pause");
         Assert(inputClock.UserTick(101)==101,"Subsequent human input still pauses automation");
         inputClock.Record(110,100); Assert(inputClock.UserTick(110)==50,"Consecutive synthetic events preserve original user idle time");
+        Assert(OfficeRequirements.Met(true,true,true) && OfficeRequirements.Missing(true,true,true)=="","All Microsoft 365 desktop prerequisites are recognized");
+        Assert(!OfficeRequirements.Met(false,true,false) && OfficeRequirements.Missing(false,true,false)=="Word, PowerPoint","Missing Office prerequisites are identified precisely");
+        string draftSubject=OutlookDraftPlan.Subject(42),draftBody=OutlookDraftPlan.Body(42);
+        Assert(draftSubject.Length>10 && draftBody.Contains("WORKING DRAFT") && draftBody.Contains("Next step:"),"Outlook draft planner creates a deterministic synthetic subject and body");
         var focusTargets=new[]{"Excel","PowerPoint","PowerPoint","Outlook","Browser","Browser"}.Select((name,i)=>new System.Collections.Generic.KeyValuePair<IntPtr,string>(new IntPtr(i+1),name));
         Assert(FocusRotation.OnePerApplication(focusTargets).Select(t=>t.Value).SequenceEqual(new[]{"Excel","PowerPoint","Outlook","Browser","Browser"}),"Multiple presentations do not get extra rotation turns; both browsers are retained");
         string testProfile=@"C:\Users\Test User\OfficeRun\EdgeProfile";
@@ -69,7 +73,7 @@ class Check {
         Assert(json.Serialize(plan)!=json.Serialize(other),"Different runs vary timing and action selection");
         Assert(plan.First().Action=="open-apps" && plan.First().AtSeconds==0,"Real app startup is the first workload action");
         Assert(plan.Zip(plan.Skip(1),(a,b)=>a.AtSeconds<b.AtSeconds).All(x=>x) && plan.Last().AtSeconds<21600,"Six-hour schedule is ordered and bounded");
-        foreach(string name in new[]{"create-text","create-csv","create-excel","create-powerpoint","edit-text","edit-csv","edit-excel","edit-powerpoint","browse","view-outlook","break","restart-apps"})
+        foreach(string name in new[]{"create-text","create-csv","create-excel","create-powerpoint","edit-text","edit-csv","edit-excel","edit-powerpoint","browse","view-outlook","draft-outlook","break","restart-apps"})
             Assert(plan.Any(x=>x.Action==name),"Six-hour schedule includes "+name);
         Assert(plan.Count(x=>x.Action=="restart-apps")==3,"Apps restart three times across the six-hour session");
         Assert(plan.Any(x=>x.Action=="break" && plan[plan.IndexOf(x)+1].AtSeconds-x.AtSeconds>=600),"Breaks leave applications open for at least ten minutes");

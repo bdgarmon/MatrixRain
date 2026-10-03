@@ -8,8 +8,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Web.Script.Serialization;
 [assembly: AssemblyTitle("Matrix Lab Worker")]
-[assembly: AssemblyVersion("2.5.0.0")]
-[assembly: AssemblyFileVersion("2.5.0.0")]
+[assembly: AssemblyVersion("2.6.0.0")]
+[assembly: AssemblyFileVersion("2.6.0.0")]
 
 namespace MatrixLabWorkloads {
     internal static class Program {
@@ -94,7 +94,7 @@ namespace MatrixLabWorkloads {
                 var logs=new DirectoryInfo(runtime).GetFiles("worker-*.txt").OrderByDescending(f=>f.LastWriteTimeUtc).ToArray();
                 foreach(var log in logs.Skip(9)) { try { log.Delete(); } catch(IOException) { } }
                 File.WriteAllText(Path.Combine(runtime,"worker-"+id.ToString("N")+".txt"),
-                    DateTime.UtcNow.ToString("o")+" Worker 2.5.0 started as "+Environment.UserDomainName+"\\"+Environment.UserName+
+                    DateTime.UtcNow.ToString("o")+" Worker 2.6.0 started as "+Environment.UserDomainName+"\\"+Environment.UserName+
                     "\r\nData: "+data+"\r\nAction: "+(values.ContainsKey("--power-report") ? "power report" : values.ContainsKey("--stop") ? "stop" : options.Mode));
                 stage="prune retained errors";
                 var errors = new DirectoryInfo(runtime).GetFiles("error-*.txt").OrderByDescending(f => f.LastWriteTimeUtc).ToArray();

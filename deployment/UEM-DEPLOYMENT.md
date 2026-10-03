@@ -1,6 +1,6 @@
-# Workspace ONE UEM: upgrade to 2.5.0
+# Workspace ONE UEM: upgrade to 2.6.0
 
-This release replaces local research tabs with live websites and installs a separately configurable browser-sites.json. Existing settings and custom site lists are preserved. Update both the package filename and installation command; the ZIP now extracts to MatrixRain/. Installed paths remain unchanged for upgrades. Upload MatrixRain-2.5.0-UEM.zip as the next version of the existing app. The installer preserves configuration/history, installs all three executables and retains the corrected native-PowerShell bootstrap. Desktop Microsoft 365 and New Outlook must already be installed; this package does not install Office or sign users in.
+This release replaces local research tabs with live websites and installs a separately configurable browser-sites.json. Existing settings and custom site lists are preserved. Update both the package filename and installation command; the ZIP now extracts to MatrixRain/. Installed paths remain unchanged for upgrades. Upload MatrixRain-2.6.0-UEM.zip as the next version of the existing app. The installer preserves configuration/history, installs all three executables and retains the corrected native-PowerShell bootstrap. Desktop Microsoft 365 and New Outlook must already be installed; this package does not install Office or sign users in.
 
 **Do not repackage the supplied ZIP.** Its top-level folder is deliberately named `MatrixRain`, matching the updated command below. The command below handles extraction explicitly; it does not assume UEM has already extracted the content.
 
@@ -8,7 +8,7 @@ This release replaces local research tabs with live websites and installs a sepa
 
 | Setting | Value |
 |---|---|
-| App version | 2.5.0.0 |
+| App version | 2.6.0 |
 | Platform / architecture | Windows Desktop / x64 |
 | Context / admin rights | Device/SYSTEM / required |
 | Installer success exit code | 0 |
@@ -19,7 +19,7 @@ This release replaces local research tabs with live websites and installs a sepa
 **Install command** — one line, with this exact uploaded ZIP filename:
 
 ```text
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '.\MatrixRain-2.5.0-UEM.zip' -DestinationPath '.\payload-v250' -Force; & '.\payload-v250\MatrixRain\deployment\Install.ps1'"
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '.\MatrixRain-2.6.0-UEM.zip' -DestinationPath '.\payload-v260' -Force; & '.\payload-v260\MatrixRain\deployment\Install.ps1'"
 ```
 
 If your console renames the uploaded archive, change only the ZIP filename to match the actual cache file. There is one enclosing `MatrixRain` folder; do not remove that component from the script path. Keep exit-code checking enabled. This installer returns 0 or 1 and never requests a reboot.
@@ -38,9 +38,9 @@ Use built-in **File exists** criteria with these literal paths. Do not paste quo
 
 | File path | Required file version |
 |---|---|
-| `C:\Program Files\AfterSix\MatrixRainLab\MatrixRainLab.exe` | Equals 2.5.0.0 |
-| `C:\Program Files\AfterSix\MatrixRainLab\MatrixLabWorker.exe` | Equals 2.5.0.0 |
-| `C:\Program Files\AfterSix\MatrixRainLab\MatrixOfficeActor.exe` | Equals 2.5.0.0 |
+| `C:\Program Files\AfterSix\MatrixRainLab\MatrixRainLab.exe` | Equals 2.6.0.0 |
+| `C:\Program Files\AfterSix\MatrixRainLab\MatrixLabWorker.exe` | Equals 2.6.0.0 |
+| `C:\Program Files\AfterSix\MatrixRainLab\MatrixOfficeActor.exe` | Equals 2.6.0.0 |
 | `C:\ProgramData\AfterSix\MatrixRainLab\config.json` | Any |
 | `C:\Program Files\AfterSix\MatrixRainLab\Start-Workload.ps1` | Any |
 | `C:\Program Files\AfterSix\MatrixRainLab\Stop-Workload.ps1` | Any |
@@ -48,7 +48,7 @@ Use built-in **File exists** criteria with these literal paths. Do not paste quo
 
 Do not use config.json alone: it is retained on uninstall. A version check ensures an older display does not satisfy this assignment. Leave unnecessary modified-date/size checks unset.
 
-The installer also writes a 64-bit registry marker `HKLM\SOFTWARE\AfterSix\MatrixRainLab`, `DisplayVersion` REG_SZ = `2.5.0`, and an InstallPath value. `deployment\Detect.ps1` (also copied beside the installed EXE) verifies registry version, all three binary versions, config and control-script presence. It prints `2.5.0` and exits 0 if all match, otherwise exits 1. For the configured UEM custom-script workflow, use the standalone Detect-MatrixRain-2.5.0.ps1 and command in the Custom detection section below. The built-in rules above remain an equivalent file-only alternative.
+The installer also writes a 64-bit registry marker `HKLM\SOFTWARE\AfterSix\MatrixRainLab`, `DisplayVersion` REG_SZ = `2.6.0`, and an InstallPath value. `deployment\Detect.ps1` (also copied beside the installed EXE) verifies registry version, all three binary versions, config and control-script presence. It prints `2.6.0` and exits 0 if all match, otherwise exits 1. For the configured UEM custom-script workflow, use the standalone Detect-MatrixRain-2.6.0.ps1 and command in the Custom detection section below. The built-in rules above remain an equivalent file-only alternative.
 
 ## Configuration and startup
 
@@ -82,21 +82,21 @@ After confirming Installed on one Latitude, sign in as the normal lab user and o
 
 Open a retained CPU result: no Pi value should appear. Export with administrator power diagnostics, approve UAC, and verify power/requests.txt contains the command result rather than a privilege-denied message. REPORT.txt should identify the Windows build (for the pilot devices, 10.0.26200 plus the installed revision) and display awake-request acceptance. Repeating export while a test runs must leave its run ID and worker PID unchanged. Cancel UAC once and confirm a limited standard-user ZIP is still saved. The exporter does not upload any bundle.
 
-## Custom detection for 2.5.0
+## Custom detection for 2.6.0
 
-Upload `Detect-MatrixRain-2.5.0.ps1` from the release root as the UEM detection script. Use:
+Upload `Detect-MatrixRain-2.6.0.ps1` from the release root as the UEM detection script. Use:
 
 ```powershell
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ".\Detect-MatrixRain-2.5.0.ps1"
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ".\Detect-MatrixRain-2.6.0.ps1"
 ```
 
-Success exit code: **0**. Not detected/check failed: **1**. This standalone PowerShell 5+ script consolidates the seven file criteria above. It checks all three EXE versions as 2.5.0.0. Replace the previous version's script when uploading this release. Installer success stays 0, reboot code stays 3010, and restart remains disabled; this release requests no reboot.
+Success exit code: **0**. Not detected/check failed: **1**. This standalone PowerShell 5+ script consolidates the seven file criteria above. It checks all three EXE versions as 2.6.0.0. Replace the previous version's script when uploading this release. Installer success stays 0, reboot code stays 3010, and restart remains disabled; this release requests no reboot.
 
-The catalog PNG does not provision endpoint shortcuts. The installer now assigns the embedded EXE icon to the Start menu shortcut, and the display explicitly uses it for its window/taskbar icon. Upgrade closes the old display; reopen it from Start to see the new icon and **v2.5.0** header. There is no need to uninstall or remove retained results/config first.
+The catalog PNG does not provision endpoint shortcuts. The installer now assigns the embedded EXE icon to the Start menu shortcut, and the display explicitly uses it for its window/taskbar icon. Upgrade closes the old display; reopen it from Start to see the new icon and **v2.6.0** header. There is no need to uninstall or remove retained results/config first.
 
-AD standard-user and Entra ID pilot instructions and diagnostic additions are in the README's 2.5.0 section. Windows elevation prompt latency still requires a device-side reproduction; this release removes the UI-thread wait and hardens alternate-account monitoring and shared-data permissions.
+AD standard-user and Entra ID pilot instructions and diagnostic additions are in the README's 2.6.0 section. Windows elevation prompt latency still requires a device-side reproduction; this release removes the UI-thread wait and hardens alternate-account monitoring and shared-data permissions.
 
 
 ## Office workday pilot
 
-Reopen the display normally after installation and confirm v2.5.0. Choose Office workday, set Settings duration to 600 seconds, and approve Go. The display minimizes; real apps start after baseline. Restore the display to stop/view progress; it restores automatically at completion/failure. Review OFFICE-WORKDAY.md before the six-hour pilot. No Office apps are launched in SYSTEM/session 0 during installation.
+Reopen the display normally after installation and confirm v2.6.0. Choose Office workday, set Settings duration to 600 seconds, and approve Go. The display minimizes; real apps start after baseline. Restore the display to stop/view progress; it restores automatically at completion/failure. Review OFFICE-WORKDAY.md before the six-hour pilot. No Office apps are launched in SYSTEM/session 0 during installation.

@@ -121,7 +121,7 @@ namespace MatrixRainLab {
         void Launch(string args,string id,string target) {
             if(busy) return;
             try {
-                if(!File.Exists(worker)) throw new FileNotFoundException("Install version 2.5.0 of the workload runner first.");
+                if(!File.Exists(worker)) throw new FileNotFoundException("Install version 2.6.0 of the workload runner first.");
                 busy=true; CanStart=CanStop=false;
                 pendingId=id; stopTarget=target; pendingSince=DateTime.UtcNow; launchObserved=false;
                 Message="Requesting administrator approval... Windows may take time to show the credential prompt.";

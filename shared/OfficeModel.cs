@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace MatrixOffice {
     public sealed class OfficeProgress {
         public string State, Activity, Error, UserSid, Desktop, Documents, UpdatedUtc, Browsers;
-        public int BrowserTabsRequested;
+        public int BrowserTabsRequested, BrowserTabSwitches, OutlookDrafts;
         public int ForegroundAttempts, ForegroundConfirmed, ForegroundDenied, InteractionPausedSeconds;
         public string ForegroundTarget, OutlookPreparation;
         public int Pid, Actions, Created, Saved, AppOpens, AppCloses, PausedSeconds, SkippedActions;
@@ -23,6 +23,28 @@ namespace MatrixOffice {
             return choices.ToArray();
         }
     }
+    public static class OfficeRequirements {
+        public static string Missing(bool word,bool excel,bool powerpoint) {
+            var missing=new List<string>();
+            if(!word) missing.Add("Word");
+            if(!excel) missing.Add("Excel");
+            if(!powerpoint) missing.Add("PowerPoint");
+            return String.Join(", ",missing.ToArray());
+        }
+        public static bool Met(bool word,bool excel,bool powerpoint) { return word && excel && powerpoint; }
+    }
+    public static class OutlookDraftPlan {
+        static readonly string[] subjects={"Project status review","Customer follow-up notes","Weekly operations update","Quarterly planning draft","Team schedule review","Budget worksheet questions"};
+        static readonly string[] paragraphs={"I reviewed the latest project materials and noted the items that need follow-up before the next check-in.","The working files have been updated with the current assumptions, dates, and open decisions for the team.","Please use this draft as a reference while we compare the schedule with the remaining work and available resources.","I will consolidate the requested changes after the next review and save the revised documents in the project folder."};
+        public static string Subject(int seed) { var random=new Random(seed); return subjects[random.Next(subjects.Length)]+" "+random.Next(100,1000); }
+        public static string Body(int seed) {
+            var random=new Random(seed^0x51A7); int count=random.Next(2,5); var lines=new List<string>();
+            lines.Add("WORKING DRAFT"); lines.Add("");
+            for(int i=0;i<count;i++) { lines.Add(paragraphs[random.Next(paragraphs.Length)]); lines.Add(""); }
+            lines.Add("Next step: review the attached project notes and update the action list.");
+            return String.Join("\r\n",lines.ToArray());
+        }
+    }
     public sealed class OfficeStep {
         public int AtSeconds;
         public string Action;
@@ -37,7 +59,7 @@ namespace MatrixOffice {
             string[] start={"create-text","create-csv","create-excel","create-powerpoint","browse","edit-excel","edit-powerpoint"};
             for(int i=0;i<start.Length;i++) if((i+1)*5<seconds) steps.Add(new OfficeStep { AtSeconds=(i+1)*5,Action=start[i] });
             int next=60, restart=5400, pause=4200;
-            string[] actions={"edit-excel","edit-excel","edit-powerpoint","edit-text","edit-csv","create-text","create-excel","create-powerpoint","browse","edit-excel","edit-powerpoint","view-outlook"};
+            string[] actions={"edit-excel","edit-excel","edit-powerpoint","edit-text","edit-csv","create-text","create-excel","create-powerpoint","browse","edit-excel","edit-powerpoint","view-outlook","draft-outlook"};
             while(next<seconds) {
                 if(next>=restart) { steps.Add(new OfficeStep {AtSeconds=next,Action="restart-apps"}); restart+=5400; next+=60; }
                 else if(next>=pause) { steps.Add(new OfficeStep {AtSeconds=next,Action="break"}); next+=random.Next(600,1201); pause+=5400; }
