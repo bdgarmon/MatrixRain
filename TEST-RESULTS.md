@@ -1,11 +1,15 @@
-# Matrix Rain 2.6.0 validation
+# Matrix Rain 3.2.0 validation
 
-**199 targeted checks passed:** 56 core/parsing, 37 controller/export, 15 deployment detection and 91 Office/startup/focus/profile/IPC checks.
+Locally executed on macOS:
 
-Nine new checks exercise exact profile matching, separate argument/path spaces/casing, rejection of URL text and similar prefixes, ambiguous/missing arguments, delayed window discovery independent of launcher lifetime, immediate success and bounded discovery timeout. Existing focus fallback, input pause, startup retry and final cleanup delivery tests remain passing.
+- All three Windows binaries compile as C# 5, x64, against .NET Framework 4.8 reference assemblies with warnings as errors. Assembly/file versions: 3.2.0.0.
+- 26 PowerShell scripts parse. This is not Windows PowerShell 5 execution.
+- 1,163 studio model/composition checks pass, plus the strict Word Window.Hwnd fixture. Tests execute production builders against recording Office fixtures; no Office COM server runs on this host.
+- 102 Office planner/IPC and 46 controller/configuration checks pass.
+- Packaging checks ZIP integrity, every packaged file against its source, required deployment paths, and the matching detection copy.
 
-All three Windows executables compile as C# 5/x64 against .NET Framework 4.8 with warnings as errors. Assembly/file version is **2.6.0.0**. Native manifests/icons and deployment detection are checked. Package validation verifies every archived file, ZIP integrity, SHA-256 hashes, MatrixRain/ root and the matching standalone detection script.
+Progressive checks cover one partial initial slide; subsequent shape additions retaining existing shape objects; slide-count limits by story stage; independent new-file progress late in the story; initial two-row BOM with no financial summaries/chart; incremental rows preserving existing cells; deferred scenario and second-source results; Word's two initial text additions and later append-only paragraphs. Fixtures deliberately reject clearing all spreadsheet cells or deleting the whole Word document. Final composition checks still cover all three themes, layout bounds, model costs, formulas, chart/image retention and story decisions.
 
-The tests run on macOS with injected browser-discovery delegates and IPC fixtures. They do not execute Windows WMI, CommandLineToArgvW, native browser handoff, registry policy inspection, Office automation or foreground APIs. Those integrations compile but still need a Windows pilot. The evidence supports correcting the premature launcher-exit failure; it does not prove the devices' browsers will start successfully or that Windows will grant every foreground request.
+Local logs: work/validation-v320 in the development workspace. Fixtures skip deliberate pacing delays. These results do not establish foreground timing, real Word pagination, Office COM compatibility, device DEX observations or UEM upgrade success.
 
-Use BROWSER-STARTUP.md and FOREGROUND-PILOT.md for a short startup/focus pilot, followed by at least 90 minutes to check Office turnover and cleanup. Page loads, requested tab counts and DEX foreground durations require device observation.
+Windows pilot: follow HARDWARE-LAUNCH-STUDIO.md. Watch startup drafts, revisit each file through several foreground intervals, confirm additions appear and earlier work remains, then stop before completion. Reopen retained files to confirm that the actual incomplete draft was saved. Run the full workday afterward to check later story sections, chart/scenario construction and cleanup. A short run need not finish all deliverables, and Stop/deadline must never fast-forward to completion.

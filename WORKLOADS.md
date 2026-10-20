@@ -1,23 +1,23 @@
 # Workloads: start here
 
-**New: Office workday** is a separate explicit six-hour selection. It runs real Excel/PowerPoint document edits, live Chrome/Edge websites and New Outlook window lifecycle in the signed-in user session. See [OFFICE-WORKDAY.md](OFFICE-WORKDAY.md). The short-test limits and Freestyle scripts below apply to the original six modes; Office workday allows 60–28,800 seconds plus baseline and is started from the display.
+**Version 3:** [Continuous rotation and rain settings](VERSION-3.md), [Windows Workday](WINDOWS-WORKDAY.md), and explicit [Microsoft 365 Testing](OFFICE-WORKDAY.md). The Freestyle scripts below remain available for the original six short modes; app modes and continuous rotation are started from the signed-in user's display.
 
 Version 1.4 runs a baseline and then a workload in one elevated worker process. DEX can distinguish `MatrixLabWorker.exe` from `MatrixRainLab.exe` overhead.
 
 ## Start from the main screen
 
-1. Open Matrix Rain. Leave **Random rotation** selected, or choose a specific workload.
-2. Check **NEXT**, which shows baseline and workload durations. Defaults are 60 seconds baseline + 600 seconds workload; **Settings** adjusts them. Baseline is 1–600 seconds in the UI; combined duration cannot exceed 3600 seconds.
-3. Click **Go (admin)** and approve once. The first phase is a rain-off baseline with no synthetic pressure; the second automatically restores rain and runs the selected workload. The same run ID, PID and exclusive worker lock span both phases.
-4. Watch phase 1/2 or 2/2, its progress bar, phase time left and total time left. These are time limits; disk work may complete sooner at its write budget. Stale heartbeats freeze progress and show remaining time as unknown. A completed phase sequence fills the bar; stopped/failed tests retain partial progress.
-5. **Stop (admin)** cancels the entire experiment, including a workload that has not started yet. A baseline failure also prevents the workload phase. Completion does not start another experiment.
+1. Open Matrix Rain. Choose **Random rotation** for an indefinite day of varied activity and rest, or choose an individual test.
+2. Click **Go (admin)** and approve once. Rotation uses its own randomized capped presets, excludes Microsoft 365, and keeps moving through phases until stopped or a failure occurs. Keep the display process open for wake requests and app helpers.
+3. For an individual test, **Settings** adjusts its duration and optional 0–600 second baseline. Short test total duration cannot exceed 3600 seconds; Microsoft 365 Testing and Windows Workday allow up to eight hours plus baseline. An initial baseline turns rain off; workload/rest phases restore it.
+4. Watch current phase, progress and time left. Rotation shows total time as **UNTIL STOPPED**. Disk work may finish early at its write budget; stale heartbeats freeze progress.
+5. **Stop (admin)** cancels the entire session and waits for app cleanup. A single test completes after its selected duration; Random Rotation starts its next phase automatically until you stop it. Safety failures end the session visibly.
 6. The bottom line preserves the last finished result while another experiment runs. **Last result** shows UTC phase timings, result measurements and the stop reason. **Export logs** includes those records and available diagnostics in a local ZIP.
 
-Pressing Esc or closing the window during an active/pending/unknown experiment opens a choice: Return to display, Stop experiment and exit (admin), or Leave experiment running and exit. Stop and exit only closes after acknowledgement and when no new active run is observed. Cancelling UAC or a stop failure leaves the display open. Leaving it running releases the display's awake request but the worker continues its bounded sequence. Windows shutdown/forced process termination is not blocked by the prompt.
+Pressing Esc or closing during an active run opens the existing exit choices. Use **Stop and exit** for a controlled end. Leaving the display closed releases its wake request and prevents future app-helper launches, so it is unsuitable for a continuous Windows Workday rotation. Windows shutdown/forced process termination is not blocked.
 
 ## Random selection and baseline
 
-Random rotation covers visualization, CPU, memory, disk and science, each preceded by a baseline. Within a display session five random starts cover the five workloads once before reshuffling; adjacent choices never repeat. Reopening starts a new set and avoids the last recorded target mode. Cancelled UAC does not consume the selection; an acknowledged failed attempt does. Explicit choices may interrupt coverage. Rotation is not persisted across display restarts.
+Random Rotation shuffles visualization, CPU, memory, disk, science and Windows Workday. Every selected phase is followed by a screensaver-only rest. Both last a random 3–12 minutes. Microsoft 365 Testing is excluded. The same elevated worker/run ID spans the indefinite rotation, including helper cleanup and rest. See [VERSION-3.md](VERSION-3.md) for pressure caps and result retention.
 
 Each device now supplies its own baseline observation interval before pressure begins. Compare the phase UTC timestamps and hostname/run ID in DEX; the baseline includes display telemetry and awake overhead but no rain or synthetic pressure. This does not guarantee a simultaneous fleet-wide control device or thermal cooldown. If you need a dedicated concurrent control, explicitly choose **Baseline** on any machine; it runs one standalone baseline for the workload-duration setting, with no duplicate prelude. No hostname mapping or per-device ZIP is needed.
 
@@ -26,7 +26,7 @@ Each device now supplies its own baseline observation interval before pressure b
 Legacy scripts retain their single-phase behavior unless Start-Workload.ps1 is given -BaselineSeconds. The scripts below are optional automation hooks for Freestyle workflows. They are no longer the primary way to control workloads. Use the main screen above for local operation.
 
 
-Upgrade the display package to 2.6.0 first. For central orchestration, use the appropriate file from `uem` in a **SYSTEM-context Freestyle script step** for that node. Give each run script at least a **12-minute execution timeout** for its default 10-minute run. These are script actions, not another application-install assignment.
+Upgrade the display package to 3.2.0 first. For central orchestration, use the appropriate file from `uem` in a **SYSTEM-context Freestyle script step** for that node. Give each run script at least a **12-minute execution timeout** for its default 10-minute run. These are script actions, not another application-install assignment.
 
 | Script | Node | What it does |
 |---|---|---|

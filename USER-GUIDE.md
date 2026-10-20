@@ -1,6 +1,8 @@
-# Matrix Rain 2.5.0
+# Matrix Rain 3.2.0
 
-**New in 2.5.0 (Windows/UEM version 2.5.0.0):** Browser startup now survives launcher exit and discovers windows using the exact test-profile argument, executable and signed-in session. Discovery waits up to 30 seconds under normal query timing, records launcher exit codes and rejection reasons, and detects conflicting managed UserDataDir registry policy. Browsers are verified before Office/Outlook launch. The 2.0.1 foreground fallback, balanced rotation and cleanup corrections remain included. See [BROWSER-STARTUP.md](BROWSER-STARTUP.md) and [FOREGROUND-PILOT.md](FOREGROUND-PILOT.md).
+**New in 3.2.0 (Windows/UEM version 3.2.0.0): visible document construction.** Microsoft 365 Testing begins with incomplete working files and adds slide content, component rows and Word paragraphs over successive foreground/edit intervals. Each file keeps its own progress. Story stages unlock later work instead of loading completed deliverables. Stop saves the current drafts without completing them automatically. The fictional Hardware Launch Studio theme, native Office documents and related Outlook drafts remain. See [HARDWARE-LAUNCH-STUDIO.md](HARDWARE-LAUNCH-STUDIO.md).
+
+**Retained from 3.0:** continuous capped Random Rotation with screensaver rest; Microsoft 365 exclusion from rotation; Windows Workday; saved rain speed/spacing controls and native-resolution rendering. See [VERSION-3.md](VERSION-3.md).
 
 **Introduced in 1.5.2:** Matrix Rain branding and the PowerPoint HWND correction.
 
@@ -8,9 +10,9 @@ The package and detection script are renamed. Installed executable names, regist
 
 **Retained from 1.5.1:** Office startup now tolerates brief status-file sharing conflicts, allowing atomic status replacement. Failed runs show a concise prompt to open a resizable, scrollable, copyable Last result window; full worker errors are retained. Upgrade using the new ZIP and detection script.
 
-**Introduced in 1.5.0:** select **Office workday** for a six-hour desktop Excel/PowerPoint, Chrome/Edge and New Outlook session with generated files under the signed-in user's Desktop and Documents. See [OFFICE-WORKDAY.md](OFFICE-WORKDAY.md) for exactly what is automated and the five-minute pilot. The corrected 32-bit UEM installer handoff remains included.
+**Introduced in 1.5.0:** select **Microsoft 365 Testing** for a six-hour desktop Excel/PowerPoint, Chrome/Edge and New Outlook session with generated files under the signed-in user's Desktop and Documents. See [OFFICE-WORKDAY.md](OFFICE-WORKDAY.md) for exactly what is automated and the five-minute pilot. The corrected 32-bit UEM installer handoff remains included.
 
-A Windows x64 Matrix display plus controlled CPU, memory, disk and local science workloads for the six-node DEX lab. Three prebuilt .NET Framework 4.8 executables are included; no Python or runtime downloads are required on the laptops. The original synthetic modes need no browser; Office workday additionally requires installed desktop Excel/PowerPoint, Chrome/Edge and New Outlook.
+A Windows x64 Matrix display plus controlled CPU, memory, disk and local science workloads for the six-node DEX lab. Three prebuilt .NET Framework 4.8 executables are included; no Python or runtime downloads are required on the laptops. The original synthetic modes need no browser; Microsoft 365 Testing requires installed desktop Word, Excel, PowerPoint, New Outlook, and at least one of Microsoft Edge or Chrome. When Chrome is absent, it uses Edge.
 
 **Retained from 1.4.2:** embedded Windows/shortcut icons, an always-visible running version, responsive administrator approval, alternate-account process monitoring, shared-data permissions and expanded elevation diagnostics. The previous CPU/OS reporting and power-export fixes remain included.
 
@@ -18,7 +20,7 @@ A Windows x64 Matrix display plus controlled CPU, memory, disk and local science
 
 The main screen shows the phase, progress bar, phase and total time remaining, and last result with the reason the test ended. **Last result** opens full phase timings and results. **Export logs** saves a local troubleshooting ZIP. Attempting to close an active experiment offers Return, Stop and exit (admin), or Leave running and exit. Stop and exit waits for acknowledgement; cancellation/failure keeps the display open.
 
-Every device uses its actual hostname. Random rotation now covers the five workloads (visualization, CPU, memory, disk, science), each with an automatic baseline. Within a display session each shuffled set covers all five without adjacent repeats. Reopening starts a new set and avoids the last recorded target mode. Standalone Baseline remains an explicit choice. Each new experiment needs approval; only the two phases within that experiment transition automatically.
+Every device uses its actual hostname. Random rotation covers visualization, CPU, memory, disk, science and Windows Workday in shuffled sets. After every choice it inserts a separate screensaver-only rest. It runs until Stop, a safety failure, or shutdown. One approval covers transitions. Microsoft 365 Testing remains an explicit choice. Single tests can still run with an initial rain-off baseline. Keep the Matrix display open for app-helper launches and the screen-awake request.
 
 - **Deploy/upgrade:** [deployment/UEM-DEPLOYMENT.md](deployment/UEM-DEPLOYMENT.md)
 - **Run experiments:** [WORKLOADS.md](WORKLOADS.md)
@@ -28,7 +30,7 @@ Every device uses its actual hostname. Random rotation now covers the five workl
 
 After UEM installation, open **Matrix Rain** from Start, or sign out/in for automatic startup. Install/upgrade is silent and does not launch a GUI in SYSTEM's session. No stress workload starts automatically at installation or sign-in.
 
-For portable use with a different administrator account, both accounts must have access to the extracted folder; prefer the UEM installation with its shared ProgramData permissions. To run portably, extract the ZIP, open its `MatrixRain` folder, double-click `Start.cmd`. The main-screen buttons use that folder automatically. For script-based portable runs, pass `-DataDirectory` pointing to it.
+For portable use with a different administrator account, both accounts must have access to the extracted folder; prefer the UEM installation with its shared ProgramData permissions. To run portably, extract the ZIP, open its `MatrixRainLab` folder, double-click `Start.cmd`. The main-screen buttons use that folder automatically. For script-based portable runs, pass `-DataDirectory` pointing to it.
 
 Controls: **Go (admin)**, **Stop (admin)**, **Last result**, **Export logs**, test dropdown, optional **Settings** (**W**), **Esc** exit, **F11** fullscreen, **Space** rain on/off when a button/dropdown does not have focus.
 
@@ -123,11 +125,11 @@ The six-device 1.4 pilot completed all latest baseline/workload sequences. Versi
 
 [Microsoft supportedOS manifest reference](https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests).
 
-## 2.5.0: Windows icons, visible version and alternate-admin elevation
+## 3.2.0: Windows icons, visible version and alternate-admin elevation
 
 The approved green M icon is embedded in both executables and set on the display window and installed Start menu shortcut. Shortcuts targeting the display EXE use that embedded icon; the installer also refreshes an existing all-users desktop shortcut named Matrix Rain if it targets this app. It does not create another desktop shortcut. Windows may cache an old pinned icon: unpin/re-pin the updated Start menu entry if needed. `MatrixRainLab.ico` contains 16, 24, 32, 48, 64, 128 and 256px images; `MatrixRainLab-UEM.png` is the 256px catalog image.
 
-The top-right display header always shows **v2.5.0**, including in fullscreen and during metrics warnings. The title bar also includes the version. Both derive from the running assembly; the EXE file version is 2.5.0.0.
+The top-right display header always shows **v3.2.0**, including in fullscreen and during metrics warnings. The title bar also includes the version. Both derive from the running assembly; the EXE file version is 3.2.0.0.
 
 Go and Stop request Windows elevation on a separate STA thread, keep animation/status responsive and prevent duplicate requests while approval is pending. The display stays unelevated. A different administrator account can approve the worker without the display reopening that account's process for monitoring. Worker status files remain authoritative; an unavailable process query is diagnostic information, not a failed workload. UAC is still required. No credentials are stored, no service is installed, and no automatic privileged task is added.
 

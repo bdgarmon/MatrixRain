@@ -9,8 +9,8 @@ namespace MatrixLabWorkloads {
         public string Mode = "cpu";
         public int Seconds = 600, Intensity = 50, Threads = 2, MemoryMiB = 512, DiskMiB = 64, WriteLimitMiB = 1024, DiskMiBPerSecond = 10;
         public void Validate() {
-            if (Array.IndexOf(new [] { "baseline", "visualization", "cpu", "memory", "disk", "science", "office" }, Mode) < 0) throw new ArgumentException("Unknown workload mode.");
-            if (Seconds < (Mode == "office" ? 60 : 1) || Seconds > (Mode == "office" ? MatrixOffice.OfficePlan.MaximumSeconds : 3600)) throw new ArgumentException("Duration is outside the allowed range for this mode.");
+            if (Array.IndexOf(new [] { "baseline", "visualization", "cpu", "memory", "disk", "science", "office", "windows", "rotation" }, Mode) < 0) throw new ArgumentException("Unknown workload mode.");
+            if (Seconds < ((Mode == "office" || Mode == "windows") ? 60 : 1) || Seconds > ((Mode == "office" || Mode == "windows") ? MatrixOffice.OfficePlan.MaximumSeconds : 3600)) throw new ArgumentException("Duration is outside the allowed range for this mode.");
             if (Intensity < 1 || Intensity > 95) throw new ArgumentException("Intensity must be 1..95.");
             if (Threads < 1 || Threads > 32) throw new ArgumentException("Threads must be 1..32.");
             if (MemoryMiB < 8 || MemoryMiB > 4096) throw new ArgumentException("MemoryMiB must be 8..4096.");

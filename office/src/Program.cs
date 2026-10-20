@@ -7,12 +7,13 @@ using System.Security.Principal;
 using System.Threading;
 using System.Web.Script.Serialization;
 using MatrixOffice;
-[assembly: AssemblyTitle("Matrix Office Workday")]
-[assembly: AssemblyVersion("2.6.0.0")]
-[assembly: AssemblyFileVersion("2.6.0.0")]
+[assembly: AssemblyTitle("Matrix Microsoft 365 Testing")]
+[assembly: AssemblyVersion("3.2.0.0")]
+[assembly: AssemblyFileVersion("3.2.0.0")]
 namespace MatrixOfficeActor {
     internal sealed class Authorization {
         public string RunId { get; set; }
+        public string HelperId { get; set; }
         public string Mode { get; set; }
         public string State { get; set; }
         public string Phase { get; set; }
@@ -47,7 +48,7 @@ namespace MatrixOfficeActor {
                 if(!Environment.UserInteractive || Process.GetCurrentProcess().SessionId==0) throw new InvalidOperationException("An interactive signed-in desktop is required.");
                 string runtime=Path.Combine(data,"workloads"), manifest=Path.Combine(runtime,"run.json");
                 Authorization permit=Read(manifest);
-                if(permit.RunId!=id || permit.Mode!="office" || permit.State!="RUNNING" || permit.ActorSid!=sid || permit.ActorSession!=Process.GetCurrentProcess().SessionId)
+                if(permit.HelperId!=id || (permit.Phase!="office" && permit.Phase!="windows") || permit.State!="RUNNING" || permit.ActorSid!=sid || permit.ActorSession!=Process.GetCurrentProcess().SessionId)
                     throw new UnauthorizedAccessException("No matching administrator-approved Office run for this user/session.");
                 DateTime stamp=DateTime.Parse(permit.UpdatedUtc).ToUniversalTime();
                 if((DateTime.UtcNow-stamp).TotalSeconds>20) throw new UnauthorizedAccessException("Administrator worker heartbeat is stale.");
@@ -61,6 +62,7 @@ namespace MatrixOfficeActor {
                         pipe.Connect(15000); uint server;
                         if(!Native.GetNamedPipeServerProcessId(pipe.SafePipeHandle,out server) || server!=(uint)permit.Pid) throw new UnauthorizedAccessException("Office status pipe is not owned by the approved worker.");
                         using(var writer=new StreamWriter(pipe) { AutoFlush=true }) {
+                            if(permit.Phase=="windows") return WindowsWorkday.Run(id,local,status,writer,delegate { return Read(manifest); },Log);
                             var heartbeat=new Thread(delegate() {
                                 while(!finished) {
                                     try {
@@ -86,7 +88,7 @@ namespace MatrixOfficeActor {
                                 while(true) {
                                     double interval=(DateTime.UtcNow-lastLoop).TotalSeconds; lastLoop=DateTime.UtcNow;
                                     permit=Read(manifest);
-                                    if(permit.RunId!=id || permit.State!="RUNNING" || File.Exists(Path.Combine(runtime,"stop-"+id))) { Log("Administrator stop/run termination observed."); break; }
+                                    if(permit.HelperId!=id || permit.State!="RUNNING" || File.Exists(Path.Combine(runtime,"stop-"+permit.RunId))) { Log("Administrator stop/run termination observed."); break; }
                                     if((DateTime.UtcNow-DateTime.Parse(permit.UpdatedUtc).ToUniversalTime()).TotalSeconds>20) throw new IOException("Administrator worker heartbeat is stale; ending Office activity.");
                                     if(permit.Phase=="office") {
                                         if(!started) {
@@ -101,10 +103,11 @@ namespace MatrixOfficeActor {
                                         else if(Native.InputIdleSeconds()<15) { interactionPaused+=interval; status.InteractionPausedSeconds=(int)interactionPaused; status.State="PAUSED"; status.Activity="Mouse/keyboard input detected; resuming after 15 seconds idle"; }
                                         else if(index<plan.Count && elapsed-preparationSeconds>=plan[index].AtSeconds) {
                                             string action=plan[index++].Action; status.State="ACTIVE"; status.Activity=action;
+                                            apps.SetStoryStage(StudioBrief.Stage(Math.Max(0,elapsed-preparationSeconds),Math.Max(60,duration-(int)preparationSeconds)));
                                             actionStarted=DateTime.UtcNow; apps.Execute(action); actionStarted=DateTime.MaxValue;
                                             Log("ACTION "+action+" / actions="+status.Actions+" / saves="+status.Saved);
                                             // Do not burst through missed actions after a locked desktop or slow app.
-                                            while(index>=8 && index<plan.Count && plan[index].AtSeconds<elapsed-preparationSeconds) { index++; status.SkippedActions++; }
+                                            while(index>=9 && index<plan.Count && plan[index].AtSeconds<elapsed-preparationSeconds) { index++; status.SkippedActions++; }
                                         } else { status.State="ACTIVE"; status.Activity="Reading / thinking; applications remain open"; }
                                         if(status.State=="ACTIVE") { actionStarted=DateTime.UtcNow; apps.RotateForeground(); actionStarted=DateTime.MaxValue; }
                                     } else { status.State="WAITING"; status.Activity="Baseline observation; Office apps not yet started"; }

@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using MatrixOffice;
 namespace MatrixOfficeActor {
-    internal sealed class Applications : IDisposable {
+    internal sealed partial class Applications : IDisposable {
         readonly Random random;
         readonly string desktop, documents, local, marker, edge, chrome, outlook;
         readonly BrowserChoice[] browserPlan;
@@ -40,7 +40,7 @@ namespace MatrixOfficeActor {
             if(!OfficeRequirements.Met(word,excelInstalled,powerpointInstalled)) {
                 string missing=OfficeRequirements.Missing(word,excelInstalled,powerpointInstalled);
                 progress.Activity="Office prerequisites missing: "+missing;
-                progress.Error="Office Workday was not successful because required Microsoft 365 desktop applications are missing: "+missing+".";
+                progress.Error="Microsoft 365 Testing was not successful because required Microsoft 365 desktop applications are missing: "+missing+".";
                 LaunchOfficeRequirementNotice(run,missing);
                 throw new InvalidOperationException(progress.Error);
             }
@@ -68,7 +68,8 @@ namespace MatrixOfficeActor {
             desktop=Root(Environment.SpecialFolder.DesktopDirectory,run);
             documents=Root(Environment.SpecialFolder.MyDocuments,run);
             progress.Desktop=desktop; progress.Documents=documents;
-            foreach(string type in new[]{"txt","csv","xlsx","pptx","html"}) files[type]=new List<string>();
+            foreach(string type in new[]{"txt","csv","xlsx","pptx","docx","html"}) files[type]=new List<string>();
+            InitializeStudio(seed);
             log("Resolved Desktop="+desktop+"; Documents="+documents+"; Edge="+edge+"; Outlook="+outlook);
         }
         void LaunchOfficeRequirementNotice(string run,string missing) {
@@ -89,18 +90,20 @@ namespace MatrixOfficeActor {
         }
         public void Execute(string action) {
             Guard();
-            if(action=="open-apps") { Browse(); OpenOffice(); OpenOutlook(); }
+            RefreshStudio();
+            if(action=="open-apps") { Browse(); OpenOffice(); PrimeStudio(); OpenOutlook(); }
             else if(action=="restart-apps") { CloseOffice(); OpenOffice(); log("Browser and Outlook windows retained during Office restart."); }
             else if(action=="break") { log("Reading/break interval: applications remain open."); return; }
             else if(action=="browse") Browse();
             else if(action=="view-outlook") { OpenOutlook(); if(outlookReady && outlookWindow!=IntPtr.Zero) Focus(outlookWindow,"Outlook"); }
-            else if(action=="draft-outlook") { OpenOutlook(); if(outlookReady && outlookWindow!=IntPtr.Zero && Focus(outlookWindow,"Outlook")) { if(OutlookDraft.TryCreateAndClose(outlookWindow,random.Next(),log)) progress.OutlookDrafts++; } }
+            else if(action=="draft-outlook") { OpenOutlook(); if(outlookReady && outlookWindow!=IntPtr.Zero && Focus(outlookWindow,"Outlook")) { if(OutlookDraft.TryCreateAndClose(outlookWindow,studio.EmailSubject(storyStage),studio.EmailBody(storyStage),log)) progress.OutlookDrafts++; } }
             else {
-                string type=action.EndsWith("excel") ? "xlsx" : action.EndsWith("powerpoint") ? "pptx" : action.EndsWith("csv") ? "csv" : "txt";
-                bool create=(action.StartsWith("create-") && files[type].Count<12) || files[type].Count==0;
+                string type=action.EndsWith("excel") ? "xlsx" : action.EndsWith("powerpoint") ? "pptx" : action.EndsWith("word") ? "docx" : action.EndsWith("csv") ? "csv" : "txt";
+                bool create=(action.StartsWith("create-") && files[type].Count<(type=="txt" || type=="csv" ? 12 : 2)) || files[type].Count==0;
                 string path=create ? NewPath(type) : files[type][random.Next(files[type].Count)];
                 if(type=="xlsx") Spreadsheet(path,create);
                 else if(type=="pptx") Presentation(path,create);
+                else if(type=="docx") WordDocument(path,create);
                 else TextFile(path,type,create);
                 Saved(path,create); if(create) files[type].Add(path);
             }
@@ -118,7 +121,8 @@ namespace MatrixOfficeActor {
             serial++;
             // Alternate locations so even a short run exercises both known folders.
             string root=serial%2==1 ? desktop : documents;
-            return Path.Combine(root,marker.Replace(" ","-")+"-Project-"+serial.ToString("D3")+"-"+random.Next(1000,9999)+"."+type);
+            string label=type=="xlsx" ? "Launch-Economics" : type=="pptx" ? "Product-Reveal" : type=="docx" ? "Design-Strategy" : "Studio-Notes";
+            return Path.Combine(root,marker.Replace(" ","-")+"-"+label+"-"+serial.ToString("D3")+"."+type);
         }
         void Saved(string path,bool created) {
             long size=new FileInfo(path).Length;
@@ -127,16 +131,11 @@ namespace MatrixOfficeActor {
         }
         void TextFile(string path,string type,bool create) {
             if(!create && !files[type].Contains(path)) throw new InvalidOperationException("Path is not owned by this run.");
-            int[] sizes={4,32,128,512,2048,8192}; int target=sizes[random.Next(sizes.Length)]*1024;
             using(var writer=new StreamWriter(new FileStream(path,create ? FileMode.CreateNew : FileMode.Create,FileAccess.Write,FileShare.Read))) {
-                int written=0,row=0;
-                string header=type=="csv" ? "Item,Department,Amount,Note\r\n" : "Matrix Rain synthetic project notes / "+DateTime.UtcNow.ToString("o")+"\r\n";
-                writer.Write(header); written+=header.Length;
-                while(written<target) {
-                    string line=type=="csv" ? (++row)+",Operations,"+random.Next(10,100000)+","+Guid.NewGuid().ToString("N")+"\r\n" :
-                        "Project update "+(++row)+": review schedule, budget and next steps. Reference "+Guid.NewGuid().ToString("N")+"\r\n";
-                    writer.Write(line); written+=line.Length;
-                }
+                if(type=="csv") {
+                    writer.WriteLine("Product,Component,Quantity,UnitCostUSD,Scenario");
+                    foreach(var p in studio.Products) foreach(var part in p.Parts) writer.WriteLine(p.Name+","+part.Name+","+part.Quantity+","+StudioProduct.UnitCost(part,storyStage).ToString("F2",System.Globalization.CultureInfo.InvariantCulture)+","+StudioBrief.Stages[storyStage]);
+                } else writer.Write(studio.EmailBody(storyStage));
             }
         }
         object StartOffice(string name,string progId,string processName) {
@@ -144,9 +143,10 @@ namespace MatrixOfficeActor {
                 Thread.Sleep,startupStage,log,()=>OfficeStartupDiagnostics.Capture(progId,processName,log));
         }
         void OpenOffice() {
+            OpenWord();
             if(excel==null) {
                 var before=Native.ProcessIds("EXCEL"); excel=StartOffice("Excel","Excel.Application","EXCEL");
-                excel.Visible=true; excel.DisplayAlerts=false; excel.AutomationSecurity=3;
+                excel.Visible=true; excel.WindowState=-4137; excel.DisplayAlerts=false; excel.AutomationSecurity=3;
                 int pid=Native.WindowPid(new IntPtr((int)excel.Hwnd)); quitExcel=!before.Contains(pid); if(quitExcel) TrackProcess(pid);
                 progress.AppOpens++; log("Opened Excel window / PID "+pid);
             }
@@ -162,51 +162,35 @@ namespace MatrixOfficeActor {
                 book=create ? excel.Workbooks.Add() : excel.Workbooks.Open(path,0,false);
                 books[path]=book;
             } else book=books[path];
-            dynamic sheet=book.Worksheets[1];
-            try {
-                int rows=new[]{50,500,2500,10000}[random.Next(4)]; var data=new object[rows,6];
-                for(int i=0;i<rows;i++) { data[i,0]="Item "+(i+1); data[i,1]="Team "+random.Next(1,10); data[i,2]=random.Next(1,500); data[i,3]=random.Next(10,5000)/10.0; data[i,4]=Guid.NewGuid().ToString("N"); data[i,5]=DateTime.UtcNow.ToString("s"); }
-                sheet.Cells.Clear(); dynamic range=sheet.Range["A2","F"+(rows+1)];
-                try { range.Value2=data; } finally { Release((object)range); }
-                sheet.Cells[1,1]="Item"; sheet.Cells[1,2]="Team"; sheet.Cells[1,3]="Quantity"; sheet.Cells[1,4]="Unit cost"; sheet.Cells[1,5]="Reference"; sheet.Cells[1,6]="Updated UTC";
-                sheet.Cells[1,8]="Total quantity"; sheet.Cells[2,8].Formula="=SUM(C2:C"+(rows+1)+")";
-                sheet.Columns["A:H"].AutoFit(); book.Activate(); excel.Calculate();
-                if(create) book.SaveAs(path,51); else book.Save();
+            {
                 Focus(new IntPtr((int)excel.Hwnd),"Excel");
+                book.Activate();
+                int cursor=StudioContent.Spreadsheet(book,excel,studio,storyStage,StudioCursor(path),local);
+                if(create) book.SaveAs(path,51); else book.Save();
+                StudioAdvanced(path,cursor);
                 // Keep at most two generated workbooks open concurrently.
                 foreach(string key in books.Keys.Where(k=>k!=path).Take(Math.Max(0,books.Count-2)).ToArray()) { dynamic old=books[key]; old.Close(false); Release((object)old); books.Remove(key); }
-            } finally { Release((object)sheet); }
+            }
         }
         void Presentation(string path,bool create) {
             OpenOffice(); dynamic deck;
             if(!decks.ContainsKey(path)) { deck=create ? powerpoint.Presentations.Add(-1) : powerpoint.Presentations.Open(path,0,0,-1); decks[path]=deck; }
             else deck=decks[path];
-            while(deck.Slides.Count>0) deck.Slides[1].Delete();
-            int slides=random.Next(3,13);
-            string image=Path.Combine(local,"chart.png");
-            using(var bitmap=new Bitmap(random.Next(2)==0 ? 640 : 1600,900)) {
-                using(var graphics=Graphics.FromImage(bitmap)) {
-                    graphics.Clear(Color.White);
-                    using(var font=new Font("Segoe UI",20)) graphics.DrawString("Synthetic quarterly activity",font,Brushes.DarkGreen,24,20);
-                    for(int i=0;i<100;i++) using(var brush=new SolidBrush(Color.FromArgb(random.Next(255),random.Next(255),random.Next(255)))) graphics.FillRectangle(brush,i*(bitmap.Width/100),100+random.Next(250),Math.Max(2,bitmap.Width/100-2),random.Next(50,450));
-                }
-                bitmap.Save(image,System.Drawing.Imaging.ImageFormat.Png);
+            // Name the new draft before discovering its owned native window.
+            // Content is then added after it has been brought forward.
+            if(create) {
+                if(deck.Slides.Count==0) { dynamic blank=deck.Slides.Add(1,12); Release((object)blank); }
+                deck.SaveAs(path,24);
             }
-            for(int i=0;i<slides;i++) {
-                dynamic slide=deck.Slides.Add(i+1,12);
-                try {
-                    dynamic title=slide.Shapes.AddTextbox(1,30,20,650,70); title.TextFrame.TextRange.Text="Project review "+(i+1)+" / "+DateTime.Now.ToString("t"); Release((object)title);
-                    dynamic picture=slide.Shapes.AddPicture(image,0,-1,30,100,500,280); Release((object)picture);
-                    dynamic note=slide.Shapes.AddTextbox(1,30,400,650,90); note.TextFrame.TextRange.Text="Forecast: "+random.Next(100,900)+" units. Next action: review and publish internal plan. "+Guid.NewGuid().ToString("N"); Release((object)note);
-                } finally { Release((object)slide); }
-            }
-            if(create) deck.SaveAs(path,24); else deck.Save();
             PowerPointAutomation.Restore(deck);
+            dynamic studioWindow=deck.Windows[1]; try { studioWindow.WindowState=3; } finally { Release((object)studioWindow); }
             // The saved document name contains this run's unique marker. Never claim a
             // pre-existing process, and never rely on Application.HWND being exposed.
             var matches=Native.Windows("POWERPNT").Where(h=>Native.Title(h).IndexOf(Path.GetFileNameWithoutExtension(path),StringComparison.OrdinalIgnoreCase)>=0).ToList();
             foreach(var h in matches) if(!presentationWindows.Contains(h)) presentationWindows.Add(h);
             if(matches.Count>0) Focus(matches[0],"PowerPoint");
+            int cursor=StudioContent.Presentation(deck,studio,storyStage,StudioCursor(path),local);
+            deck.Save(); StudioAdvanced(path,cursor);
             var pids=matches.Select(Native.WindowPid).Distinct().ToArray();
             if(pids.Length==1 && pids[0]>0 && !powerpointBefore.Contains(pids[0])) {
                 quitPowerpoint=true; TrackProcess(pids[0]);
@@ -263,15 +247,18 @@ namespace MatrixOfficeActor {
             if(DateTime.UtcNow<nextFocus) return;
             var targets=new List<KeyValuePair<IntPtr,string>>();
             if(excel!=null) targets.Add(new KeyValuePair<IntPtr,string>(new IntPtr((int)excel.Hwnd),"Excel"));
+            AddWordFocus(targets);
             foreach(var h in presentationWindows.Where(Native.Exists)) targets.Add(new KeyValuePair<IntPtr,string>(h,"PowerPoint"));
             if(outlookReady && Native.Exists(outlookWindow)) targets.Add(new KeyValuePair<IntPtr,string>(outlookWindow,"Outlook"));
             foreach(var h in browserWindows.Where(h=>Native.Tagged(h,marker))) targets.Add(new KeyValuePair<IntPtr,string>(h,"Browser"));
             if(targets.Count==0) return;
             targets=FocusRotation.OnePerApplication(targets);
             var target=targets[focusIndex++ % targets.Count];
-            if(Focus(target.Key,target.Value) && target.Value=="Browser") {
-                if(Native.NextBrowserTab(target.Key)) { progress.BrowserTabSwitches++; log("BROWSER TAB NEXT / PID "+Native.WindowPid(target.Key)); }
-                else log("BROWSER TAB NEXT skipped: browser window is no longer confirmed foreground or user input resumed.");
+            if(Focus(target.Key,target.Value)) {
+                if(target.Value=="Browser") {
+                    if(Native.NextBrowserTab(target.Key)) { progress.BrowserTabSwitches++; log("BROWSER TAB NEXT / PID "+Native.WindowPid(target.Key)); }
+                    else log("BROWSER TAB NEXT skipped: browser window is no longer confirmed foreground or user input resumed.");
+                } else ReviewStudioView(target.Key,target.Value);
             }
             nextFocus=DateTime.UtcNow.AddSeconds(random.Next(30,61));
         }
@@ -300,10 +287,16 @@ namespace MatrixOfficeActor {
             }
             browsersOpened=true;
         }
-        void CloseBrowser() { foreach(var h in browserWindows) if(Native.Tagged(h,marker)) { Native.Close(h,marker); progress.AppCloses++; } browserWindows.Clear(); }
+        void CloseBrowser() {
+            var errors=new List<Exception>();
+            foreach(var h in browserWindows.ToArray()) if(!Native.Tagged(h,marker)) browserWindows.Remove(h);
+            else CleanupSteps.Try("Browser window "+h,delegate { Native.Close(h,marker); progress.AppCloses++; browserWindows.Remove(h); },errors);
+            if(errors.Count>0) throw new AggregateException("Browser window cleanup incomplete",errors);
+        }
         void CloseOutlook() { if(outlookOwned && outlookWindow!=IntPtr.Zero && Native.Tagged(outlookWindow,marker)) { Native.Close(outlookWindow,marker); progress.AppCloses++; } outlookWindow=IntPtr.Zero; }
         void CloseOffice() {
             var errors=new List<Exception>(); bool excelClean=true, powerpointClean=true;
+            CloseWord(errors);
             foreach(var entry in books.ToArray()) {
                 dynamic book=entry.Value;
                 bool saved=CleanupSteps.Try("Save Excel document: "+entry.Key,delegate { book.Save(); Saved(entry.Key,false); },errors);
@@ -333,7 +326,7 @@ namespace MatrixOfficeActor {
             try { CloseBrowser(); } catch { } try { CloseOutlook(); } catch { }
             KeyValuePair<int,long>[] owned; lock(processGate) owned=ownedProcesses.ToArray();
             foreach(var entry in owned) try { using(var p=Process.GetProcessById(entry.Key)) {
-                if(p.StartTime.ToUniversalTime().Ticks==entry.Value && (p.ProcessName=="EXCEL" || p.ProcessName=="POWERPNT")) p.Kill();
+                if(p.StartTime.ToUniversalTime().Ticks==entry.Value && (p.ProcessName=="EXCEL" || p.ProcessName=="POWERPNT" || p.ProcessName=="WINWORD")) p.Kill();
             } } catch { }
         }
         public void Dispose() {
@@ -380,8 +373,8 @@ namespace MatrixOfficeActor {
         internal static void Close(IntPtr window,string marker) {
             if(!Tagged(window,marker)) return;
             PostMessage(window,0x10,IntPtr.Zero,IntPtr.Zero);
-            for(int i=0;i<50;i++) { if(!Tagged(window,marker) || !IsWindowVisible(window)) return; Thread.Sleep(100); }
-            throw new IOException("A test-owned application window did not close within five seconds.");
+            for(int i=0;i<150;i++) { if(!Tagged(window,marker) || !IsWindowVisible(window)) return; Thread.Sleep(100); }
+            throw new IOException("A test-owned application window did not close within fifteen seconds.");
         }
         internal static int WindowPid(IntPtr window) { uint id; GetWindowThreadProcessId(window,out id); return (int)id; }
         internal static string Title(IntPtr window) { var s=new StringBuilder(512); GetWindowText(window,s,512); return s.ToString(); }

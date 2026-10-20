@@ -33,6 +33,9 @@ namespace MatrixOfficeActor {
             return null;
         }
         internal static bool TryCreateAndClose(IntPtr window,int seed,Action<string> log) {
+            return TryCreateAndClose(window,OutlookDraftPlan.Subject(seed),OutlookDraftPlan.Body(seed),log);
+        }
+        internal static bool TryCreateAndClose(IntPtr window,string subjectText,string bodyText,Action<string> log) {
             if(!Native.NewOutlookMessage(window)) { log("OUTLOOK DRAFT skipped: compose keyboard shortcut was not safe to send."); return false; }
             AutomationElement root=null,subject=null,body=null;
             for(int i=0;i<30 && (subject==null || body==null);i++) {
@@ -42,8 +45,7 @@ namespace MatrixOfficeActor {
             }
             if(subject==null || body==null) { log("OUTLOOK DRAFT skipped: New Outlook compose fields were not exposed by UI Automation."); return false; }
             try {
-                string text=OutlookDraftPlan.Body(seed);
-                if(!Set(subject,OutlookDraftPlan.Subject(seed)) || !Set(body,text)) { log("OUTLOOK DRAFT skipped: compose fields do not permit automation values."); return false; }
+                if(!Set(subject,subjectText) || !Set(body,bodyText)) { log("OUTLOOK DRAFT skipped: compose fields do not permit automation values."); return false; }
                 // Apply a small formatting change only inside the draft body. We avoid
                 // Ctrl+Enter and never set a recipient, so this helper cannot send mail.
                 body.SetFocus(); Thread.Sleep(100);

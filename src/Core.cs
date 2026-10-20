@@ -19,12 +19,15 @@ namespace MatrixRainLab {
         public bool KeepAwake { get; set; }
         public bool EnableCsv { get; set; }
         public bool EnableGpu { get; set; }
+        public double RainSpeed { get; set; }
+        public double RainSpacing { get; set; }
         public Settings() {
             LabTitle = "AFTER SIX LAB"; NodeLabel = "AUTO";
             ExperimentLabel = "DEX EXPERIENCE LAB"; WorkloadLabel = "MATRIX DISPLAY";
             WatchProcess = ""; StateFile = "state.json";
             FramesPerSecond = 15; SampleSeconds = 5; Monitor = 0;
             Fullscreen = true; RainEnabled = true; KeepAwake = true; EnableGpu = true;
+            RainSpeed=2.0; RainSpacing=1.25;
         }
         public static void ValidateKeys(IEnumerable<string> names) {
             var allowed = new HashSet<string>();
@@ -37,6 +40,8 @@ namespace MatrixRainLab {
             if (FramesPerSecond < 1 || FramesPerSecond > 30) throw new ArgumentException("FramesPerSecond must be 1..30.");
             if (SampleSeconds < 1 || SampleSeconds > 60) throw new ArgumentException("SampleSeconds must be 1..60.");
             if (Monitor < 0 || Monitor > 15) throw new ArgumentException("Monitor must be 0..15.");
+            if(Double.IsNaN(RainSpeed) || Double.IsInfinity(RainSpeed) || RainSpeed<0.25 || RainSpeed>6) throw new ArgumentException("RainSpeed must be 0.25..6.");
+            if(Double.IsNaN(RainSpacing) || Double.IsInfinity(RainSpacing) || RainSpacing<0.75 || RainSpacing>4) throw new ArgumentException("RainSpacing must be 0.75..4.");
             if (!String.IsNullOrEmpty(WatchProcess) && !Regex.IsMatch(WatchProcess, @"^[\w .-]{1,100}$"))
                 throw new ArgumentException("WatchProcess must be a process name, without a path.");
             if (StateFile == null) StateFile = "";

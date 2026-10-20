@@ -6,6 +6,15 @@ class Check {
     static int count;
     static void Assert(bool value,string name) { if(!value) throw new Exception(name); Console.WriteLine("PASS: "+name); count++; }
     static void Main() {
+        new Settings().Validate(); Assert(true,"Old configuration defaults include valid rain speed and spacing");
+        foreach(double invalid in new[]{Double.NaN,Double.PositiveInfinity,0.0,7.0}) {
+            bool rejected=false; try { new Settings {RainSpeed=invalid}.Validate(); } catch(ArgumentException) { rejected=true; }
+            Assert(rejected,"Invalid rain speed rejected: "+invalid);
+        }
+        foreach(double invalid in new[]{Double.NaN,Double.NegativeInfinity,0.5,5.0}) {
+            bool rejected=false; try { new Settings {RainSpacing=invalid}.Validate(); } catch(ArgumentException) { rejected=true; }
+            Assert(rejected,"Invalid rain spacing rejected: "+invalid);
+        }
         string data=Path.Combine(Path.GetTempPath(),"Matrix session "+Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(data,"workloads"));
         string path=Path.Combine(data,"workloads","run.json");

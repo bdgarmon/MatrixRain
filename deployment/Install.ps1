@@ -40,6 +40,9 @@ try {
     foreach ($name in @('MatrixLabWorker.exe','MatrixLabWorker.exe.config','MatrixOfficeActor.exe','MatrixOfficeActor.exe.config','Start-Workload.ps1','Stop-Workload.ps1','Get-WorkloadStatus.ps1','WORKLOADS.md','OFFICE-WORKDAY.md')) { Copy-Item (Join-Path $root $name) $stage }
     Copy-Item (Join-Path $root 'Set-WorkloadState.ps1') $stage
     Copy-Item (Join-Path $root 'README.md') $stage
+    Copy-Item (Join-Path $root 'VERSION-3.md') $stage
+    Copy-Item (Join-Path $root 'WINDOWS-WORKDAY.md') $stage
+    Copy-Item (Join-Path $root 'HARDWARE-LAUNCH-STUDIO.md') $stage
     Copy-Item (Join-Path $PSScriptRoot 'Uninstall.ps1') $stage
     Copy-Item (Join-Path $PSScriptRoot 'Detect.ps1') $stage
     $configPath = Join-Path $data 'config.json'
@@ -81,7 +84,7 @@ try {
     $shortcut.Arguments = '--config "{0}"' -f $configPath
     $shortcut.WorkingDirectory = $target
     $shortcut.IconLocation = "$exe,0"
-    $shortcut.Description = 'Matrix Rain 2.6.0'
+    $shortcut.Description = 'Matrix Rain 3.2.0'
     $shortcut.Save()
     # Migrate only shortcuts that actually target this installation.
     foreach ($folder in @([Environment]::GetFolderPath('CommonPrograms'),[Environment]::GetFolderPath('CommonDesktopDirectory'))) {
@@ -95,7 +98,7 @@ try {
                 $newShortcut.Arguments = '--config "{0}"' -f $configPath
                 $newShortcut.WorkingDirectory = $target
                 $newShortcut.IconLocation = "$exe,0"
-                $newShortcut.Description = 'Matrix Rain 2.6.0'
+                $newShortcut.Description = 'Matrix Rain 3.2.0'
                 $newShortcut.Save()
                 Remove-Item -LiteralPath $oldLink -Force
             }
@@ -104,9 +107,9 @@ try {
     # Marker is written only after files, config, shortcut and startup settings succeed.
     New-Item $key -Force | Out-Null
     New-ItemProperty $key -Name InstallPath -Value $target -PropertyType String -Force | Out-Null
-    New-ItemProperty $key -Name DisplayVersion -Value '2.6.0' -PropertyType String -Force | Out-Null
+    New-ItemProperty $key -Name DisplayVersion -Value '3.2.0' -PropertyType String -Force | Out-Null
     if (Test-Path $backup) { Remove-Item $backup -Recurse -Force }
-    Write-Output 'Matrix Rain 2.6.0 installed. Starts at next user sign-in, or from the Start menu.'
+    Write-Output 'Matrix Rain 3.2.0 installed. Starts at next user sign-in, or from the Start menu.'
     exit 0
 } catch {
     Write-Error -Message $_ -ErrorAction Continue

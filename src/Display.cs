@@ -11,8 +11,8 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 [assembly: AssemblyTitle("Matrix Rain")]
 [assembly: AssemblyDescription("Local experiment display for the After Six DEX lab")]
-[assembly: AssemblyVersion("2.6.0.0")]
-[assembly: AssemblyFileVersion("2.6.0.0")]
+[assembly: AssemblyVersion("3.2.0.0")]
+[assembly: AssemblyFileVersion("3.2.0.0")]
 
 namespace MatrixRainLab {
     internal sealed class CsvLog {
@@ -43,9 +43,8 @@ namespace MatrixRainLab {
         readonly ComboBox choose = new ComboBox();
         readonly System.Windows.Forms.Timer controlTimer = new System.Windows.Forms.Timer();
         readonly WorkloadSession session;
-        readonly TestRotation rotation;
         WorkloadRequest request = new WorkloadRequest();
-        string nextMode, observedRun, observedPhase;
+        string observedPhase;
         bool allowExit, exitAfterStop, exporting;
         string exportMessage;
         readonly DisplayAwake awakeRequest = new DisplayAwake(Native.SetThreadExecutionState);
@@ -78,9 +77,14 @@ namespace MatrixRainLab {
         const int Cell = 24, Shades = 7;
         public LabForm(Settings value, string directory) {
             settings = value; configDirectory = directory; rain = settings.RainEnabled;
+            try {
+                string preference=Path.Combine(Program.DataDirectory,"appearance.json");
+                if(File.Exists(preference)) {
+                    var stored=new JavaScriptSerializer().Deserialize<Settings>(File.ReadAllText(preference));
+                    stored.Validate(); settings.RainSpeed=stored.RainSpeed; settings.RainSpacing=stored.RainSpacing;
+                }
+            } catch(Exception e) { LaunchDiagnostics.Write(Program.DataDirectory,"Appearance preference ignored: "+e.Message); }
             session = new WorkloadSession(directory);
-            rotation = new TestRotation(Guid.NewGuid().GetHashCode(), session.Latest == null ? null : session.Latest.Mode);
-            nextMode = rotation.Next();
             Text = "Matrix Rain v" + Program.Version; Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); BackColor = Color.Black; KeyPreview = true;
             ClientSize = new Size(1100, 760); MinimumSize = new Size(900, 620);
             StartPosition = FormStartPosition.Manual;
@@ -95,12 +99,13 @@ namespace MatrixRainLab {
                 button.FlatStyle = FlatStyle.Flat; button.Font = label; Controls.Add(button);
             }
             choose.DropDownStyle = ComboBoxStyle.DropDownList; choose.Font = label;
-            choose.Items.AddRange(new object[] { "Random rotation", "Baseline (rain off)", "Visualization", "CPU", "Memory", "Disk I/O", "Science / pi", "Office workday" });
+            choose.Items.AddRange(new object[] { "Random rotation", "Baseline (rain off)", "Visualization", "CPU", "Memory", "Disk I/O", "Science / pi", "Microsoft 365 Testing", "Windows Workday" });
             choose.SelectedIndex = 0; Controls.Add(choose);
             choose.SelectedIndexChanged += delegate {
                 string selected=SelectedMode();
-                if(selected=="office" && request.Mode!="office") request.Seconds=MatrixOffice.OfficePlan.DefaultSeconds;
-                else if(selected!="office" && request.Mode=="office") request.Seconds=600;
+                bool app=selected=="office" || selected=="windows", previousApp=request.Mode=="office" || request.Mode=="windows";
+                if(app && !previousApp) request.Seconds=MatrixOffice.OfficePlan.DefaultSeconds;
+                else if(!app && previousApp) request.Seconds=600;
                 request.Mode=selected; Invalidate();
             };
             workloadButton.Click += delegate { OpenWorkloads(); };
@@ -121,7 +126,7 @@ namespace MatrixRainLab {
                 if (WindowState == FormWindowState.Minimized) return;
                 if (rain && heads != null) {
                     for (int i = 0; i < heads.Length; i++) {
-                        heads[i] += (float)(delta * speeds[i]);
+                        heads[i] += (float)(delta * speeds[i] * settings.RainSpeed);
                         if (heads[i] - lengths[i] * Cell > ClientSize.Height) { heads[i] = -random.Next(20, 300); seeds[i] = random.Next(100000); }
                     }
                 }
@@ -139,28 +144,31 @@ namespace MatrixRainLab {
         string officeLaunched, officeCompletionShown;
         void EnsureOfficeHelper() {
             var run=session.Latest;
-            if(run!=null && run.RunId==officeLaunched && run.State!="RUNNING" && officeCompletionShown!=run.RunId) {
+            if(run!=null && officeLaunched!=null && run.State!="RUNNING" && officeCompletionShown!=run.RunId) {
                 officeCompletionShown=run.RunId; WindowState=FormWindowState.Normal;
                 // A prerequisite warning intentionally leaves Notepad in front. Matrix
                 // Rain remains visible behind it with the failure result.
                 bool requirementsMissing=run.Office!=null && !String.IsNullOrEmpty(run.Office.Error) && run.Office.Error.IndexOf("required Microsoft 365 desktop applications",StringComparison.OrdinalIgnoreCase)>=0;
                 if(!requirementsMissing) Activate();
             }
-            if(run==null || run.Mode!="office" || run.State!="RUNNING" || run.RunId==officeLaunched) return;
+            if(run==null || (run.ActivePhase!="office" && run.ActivePhase!="windows") || run.State!="RUNNING" || run.HelperId==officeLaunched) {
+                if(run!=null && run.State=="RUNNING" && run.ActivePhase!="office" && run.ActivePhase!="windows" && WindowState==FormWindowState.Minimized) { WindowState=FormWindowState.Normal; }
+                return;
+            }
             using(var identity=System.Security.Principal.WindowsIdentity.GetCurrent()) {
                 if(run.ActorSid!=identity.User.Value || run.ActorSession!=Process.GetCurrentProcess().SessionId) return;
             }
-            officeLaunched=run.RunId;
+            officeLaunched=run.HelperId;
             // Reopening the display observes the already-authorized helper; it must not start another or minimize the controls again.
             if(run.Office!=null && run.Office.Pid>0) return;
             try {
                 string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"MatrixOfficeActor.exe");
-                var start=new ProcessStartInfo(path,"--run-id "+run.RunId+" --data "+WorkloadRequest.Quote(configDirectory)) {UseShellExecute=false,WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory};
+                var start=new ProcessStartInfo(path,"--run-id "+run.HelperId+" --data "+WorkloadRequest.Quote(configDirectory)) {UseShellExecute=false,WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory};
                 using(var actor=Process.Start(start)) { LaunchDiagnostics.Write(Program.DataDirectory,"Started unelevated Office helper / run "+run.RunId+" / PID "+actor.Id); }
                 WindowState=FormWindowState.Minimized;
             } catch(Exception e) { exportMessage="Office helper could not start. Export logs for details."; LaunchDiagnostics.Write(Program.DataDirectory,e.ToString()); }
         }
-        string SelectedMode() { return choose.SelectedIndex == 0 ? nextMode : WorkloadRequest.Modes[choose.SelectedIndex - 1]; }
+        string SelectedMode() { return choose.SelectedIndex == 0 ? "rotation" : WorkloadRequest.Modes[choose.SelectedIndex - 1]; }
         void RefreshControls() {
             EnsureOfficeHelper();
             go.Enabled = session.CanStart; halt.Enabled = session.CanStop;
@@ -170,13 +178,6 @@ namespace MatrixRainLab {
             if (run!=null && run.RunId+run.ActivePhase!=observedPhase) {
                 if(run.State=="RUNNING" && !run.Stale) rain=run.ActivePhase!="baseline";
                 observedPhase=run.RunId+run.ActivePhase;
-            }
-            if (run != null && run.RunId != observedRun) {
-                // Only a worker acknowledgement advances the local rotation; cancelled UAC does not.
-                if (observedRun != null || session.Busy == false) {
-                    if (run.Mode == nextMode) nextMode = rotation.Next();
-                }
-                observedRun = run.RunId;
             }
         }
         void RenewAwake() {
@@ -191,10 +192,15 @@ namespace MatrixRainLab {
         }
         void OpenWorkloads() {
             request.Mode = SelectedMode();
-            using (var panel = new WorkloadControls(request)) {
+            using (var panel = new WorkloadControls(request,settings)) {
                 if (panel.ShowDialog(this) == DialogResult.OK) {
                     string previous = request.Mode; request = panel.Value;
-                    if (request.Mode != previous) choose.SelectedIndex = Array.IndexOf(WorkloadRequest.Modes, request.Mode) + 1;
+                    if (request.Mode != previous) choose.SelectedIndex = request.Mode=="rotation" ? 0 : Array.IndexOf(WorkloadRequest.Modes, request.Mode) + 1;
+                    ResetRain();
+                    try {
+                        Directory.CreateDirectory(Program.DataDirectory);
+                        File.WriteAllText(Path.Combine(Program.DataDirectory,"appearance.json"),new JavaScriptSerializer().Serialize(new { settings.RainSpeed,settings.RainSpacing }));
+                    } catch(Exception e) { exportMessage="Appearance applied; could not save preference: "+e.Message; }
                 }
             }
             Invalidate();
@@ -220,20 +226,20 @@ namespace MatrixRainLab {
         void BuildAtlas() {
             atlas = new Bitmap(glyphs.Length * Cell, Shades * Cell, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(atlas)) using (var font = new Font("Consolas", 18, FontStyle.Bold, GraphicsUnit.Pixel)) {
-                g.Clear(Color.Black); g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+                g.Clear(Color.Transparent); g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 for (int shade = 0; shade < Shades; shade++) {
-                    Color color = shade == 0 ? Color.FromArgb(155, 240, 182) : Color.FromArgb(0, 140 - shade * 18, 25);
+                    Color color = shade == 0 ? Color.FromArgb(225, 255, 235) : Color.FromArgb(10, 240 - shade * 31, 52);
                     using (var brush = new SolidBrush(color))
                         for (int i = 0; i < glyphs.Length; i++) g.DrawString(glyphs[i].ToString(), font, brush, i * Cell, shade * Cell);
                 }
             }
         }
         void ResetRain() {
-            int n = Math.Max(1, ClientSize.Width / (Cell * 2) + 1);
+            int n = Math.Max(1, (int)(ClientSize.Width / (Cell * settings.RainSpacing)) + 1);
             heads = new float[n]; speeds = new float[n]; lengths = new int[n]; seeds = new int[n];
             for (int i = 0; i < n; i++) {
                 heads[i] = random.Next(-500, Math.Max(1, ClientSize.Height)); speeds[i] = random.Next(55, 155);
-                lengths[i] = random.Next(6, 18); seeds[i] = random.Next(100000);
+                lengths[i] = random.Next(12, Math.Max(24,ClientSize.Height/Cell)); seeds[i] = random.Next(100000);
             }
         }
         void SampleLoop() {
@@ -272,7 +278,9 @@ namespace MatrixRainLab {
                     int shade = j == 0 ? 0 : Math.Min(Shades - 1, 1 + j * (Shades - 2) / lengths[i]);
                     int symbol = (seeds[i] + j * 17 + (int)(heads[i] / Cell)) % glyphs.Length;
                     if (symbol < 0) symbol += glyphs.Length;
-                    g.DrawImage(atlas, new Rectangle(i * Cell * 2, y, Cell, Cell), new Rectangle(symbol * Cell, shade * Cell, Cell, Cell), GraphicsUnit.Pixel);
+                    int x=(int)(i*Cell*settings.RainSpacing);
+                    if(j==0) using(var glow=new SolidBrush(Color.FromArgb(36,55,255,110))) g.FillEllipse(glow,x-3,y-3,Cell+6,Cell+6);
+                    g.DrawImage(atlas, new Rectangle(x, y, Cell, Cell), new Rectangle(symbol * Cell, shade * Cell, Cell, Cell), GraphicsUnit.Pixel);
                 }
             }
             float scale = Math.Min(ClientSize.Width / 1100f, ClientSize.Height / 760f);
@@ -303,20 +311,20 @@ namespace MatrixRainLab {
             Brush stateBrush = running || run == null ? green : white;
             if (!running || animation.ElapsedMilliseconds % 1200 < 800) g.FillEllipse(stateBrush, 36, 578, 10, 10);
             double phaseElapsed=run==null ? 0 : run.PhaseElapsed(DateTime.UtcNow);
-            string phase=run==null ? "" : run.ActivePhase.ToUpperInvariant()+" "+run.PhaseIndex+"/"+run.PhaseCount+(run.ActivePhase=="baseline" && run.Mode!="baseline" ? " > "+run.Mode.ToUpperInvariant() : "");
+            string phase=run==null ? "" : WorkloadRequest.Label(run.ActivePhase).ToUpperInvariant()+" "+run.PhaseIndex+(run.Mode=="rotation" ? " / CONTINUOUS" : "/"+run.PhaseCount);
             TextLine(g,state+" / "+phase,label,stateBrush,56,570,560);
-            string next=SelectedMode()=="baseline" ? "BASELINE "+request.Seconds+"s" : "BASELINE "+request.BaselineSeconds+"s > "+SelectedMode().ToUpperInvariant()+" "+request.Seconds+"s";
-            TextLine(g,"NEXT: "+next,small,green,630,573,432);
+            string next=SelectedMode()=="baseline" ? "BASELINE "+request.Seconds+"s" : "BASELINE "+request.BaselineSeconds+"s > "+WorkloadRequest.Label(SelectedMode()).ToUpperInvariant()+" "+request.Seconds+"s";
+            TextLine(g,SelectedMode()=="rotation" ? "RANDOM + REST / UNTIL STOPPED" : "NEXT: "+next,small,green,630,573,432);
             g.FillRectangle(dark,36,600,1028,5);
             if(run!=null) g.FillRectangle(green,36,600,(float)(1028*run.Progress(DateTime.UtcNow)),5);
             string progress=run==null ? "Ready for next test" : "PHASE "+Metrics.Duration(phaseElapsed)+" / "+Metrics.Duration(run.PhaseSeconds)+
-                "   LEFT "+(run.Stale ? "UNKNOWN" : Metrics.Duration(run.Remaining(DateTime.UtcNow)))+"   TOTAL LEFT "+(run.Stale ? "UNKNOWN" : Metrics.Duration(run.TotalRemaining(DateTime.UtcNow)))+(run.ActivePhase=="disk" ? " max" : "");
+                "   LEFT "+(run.Stale ? "UNKNOWN" : Metrics.Duration(run.Remaining(DateTime.UtcNow)))+"   TOTAL LEFT "+(run.Mode=="rotation" ? "UNTIL STOPPED" : run.Stale ? "UNKNOWN" : Metrics.Duration(run.TotalRemaining(DateTime.UtcNow)))+(run.ActivePhase=="disk" ? " max" : "");
             TextLine(g,progress,small,green,36,662,760);
             TextLine(g,awake ? "AWAKE REQUEST ACTIVE" : "AWAKE REQUEST FAILED",small,awake ? green : white,800,662,265);
-            string note=exportMessage ?? (run!=null && run.Mode=="office" && run.Office!=null ?
-                run.Office.State+" / "+run.Office.Activity+" / "+run.Office.Created+" files / "+run.Office.Saved+" saves" : session.Message);
+            string note=exportMessage ?? (run!=null && run.Office!=null ?
+                (String.IsNullOrEmpty(run.Office.StudioTheme) ? "" : run.Office.StudioTheme+" / "+run.Office.StudioStage+" / ")+run.Office.State+" / "+run.Office.Activity+" / "+run.Office.Created+" files / "+run.Office.Saved+" saves" : session.Message);
             if(run!=null && run.State=="FAILED") note=run.Mode=="office" && run.Office!=null && !String.IsNullOrEmpty(run.Office.Error) ?
-                "OFFICE WORKDAY NOT SUCCESSFUL: "+run.Office.Error : "Test failed. Click Last result for the full error; Export logs includes diagnostics.";
+                "MICROSOFT 365 TESTING NOT SUCCESSFUL: "+run.Office.Error : "Test failed. Click Last result for the full error; Export logs includes diagnostics.";
             if(run!=null && run.Stale) note="No worker heartbeat for over 20s. Progress frozen; check logs before retrying.";
             TextLine(g,note,small,green,36,687,1030);
             string last=session.LastResult==null ? "No finished test yet" : session.LastResult.State=="FAILED" ? session.LastResult.Mode+" / FAILED — click Last result for details" : session.LastResult.Summary;

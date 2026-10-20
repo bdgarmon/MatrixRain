@@ -12,7 +12,7 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed: $LASTEXITCODE" }
 Write-Output "Built $output"
 
 $workerSources = Get-ChildItem (Join-Path $PSScriptRoot 'workloads\src') -Filter '*.cs' | Select-Object -ExpandProperty FullName
-$workerSources = @($workerSources) + @(Join-Path $PSScriptRoot 'src\PowerDiagnostics.cs')
+$workerSources = @($workerSources) + @(Join-Path $PSScriptRoot 'src\PowerDiagnostics.cs') + @(Join-Path $PSScriptRoot 'src\WorkloadRequest.cs')
 $workerOutput = Join-Path $PSScriptRoot 'MatrixLabWorker.exe'
 & $compiler /nologo "/win32icon:$PSScriptRoot\MatrixRainLab.ico" /target:exe /platform:x64 /optimize+ /warnaserror+ /r:System.dll /r:System.Core.dll /r:System.Web.Extensions.dll "/win32manifest:$PSScriptRoot\worker.manifest" "/out:$workerOutput" $workerSources $shared
 if ($LASTEXITCODE -ne 0) { throw "Worker build failed: $LASTEXITCODE" }

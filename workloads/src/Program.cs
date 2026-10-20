@@ -8,8 +8,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Web.Script.Serialization;
 [assembly: AssemblyTitle("Matrix Lab Worker")]
-[assembly: AssemblyVersion("2.6.0.0")]
-[assembly: AssemblyFileVersion("2.6.0.0")]
+[assembly: AssemblyVersion("3.2.0.0")]
+[assembly: AssemblyFileVersion("3.2.0.0")]
 
 namespace MatrixLabWorkloads {
     internal static class Program {
@@ -74,13 +74,13 @@ namespace MatrixLabWorkloads {
                 if (values.ContainsKey("--disk-rate-mib")) options.DiskMiBPerSecond = Int32.Parse(values["--disk-rate-mib"]);
                 options.Validate();
                 int baselineSeconds = values.ContainsKey("--baseline-seconds") ? Int32.Parse(values["--baseline-seconds"]) : 0;
-                if (baselineSeconds < 0 || baselineSeconds > 600 || (options.Mode != "baseline" && options.Seconds + baselineSeconds > (options.Mode=="office" ? MatrixOffice.OfficePlan.MaximumSeconds+600 : 3600))) throw new ArgumentException("Baseline must be 0..600 seconds and total duration at most 3600 seconds.");
+                if (baselineSeconds < 0 || baselineSeconds > 600 || (options.Mode != "baseline" && options.Seconds + baselineSeconds > ((options.Mode=="office" || options.Mode=="windows") ? MatrixOffice.OfficePlan.MaximumSeconds+600 : 3600))) throw new ArgumentException("Baseline must be 0..600 seconds and total duration at most 3600 seconds.");
                 if (options.Mode == "baseline") baselineSeconds = 0;
                 string actorSid=null; int actorSession=0;
-                if(options.Mode=="office") {
+                if(options.Mode=="office" || options.Mode=="windows" || options.Mode=="rotation") {
                     actorSid=values.ContainsKey("--actor-sid") ? values["--actor-sid"] : null;
                     if(String.IsNullOrEmpty(actorSid) || !values.ContainsKey("--actor-session") || !Int32.TryParse(values["--actor-session"],out actorSession) || actorSession<=0)
-                        throw new ArgumentException("Office workday must be started from the signed-in user's Matrix display.");
+                        throw new ArgumentException("Microsoft 365 Testing must be started from the signed-in user's Matrix display.");
 #if !PORTABLE_TEST
                     new System.Security.Principal.SecurityIdentifier(actorSid);
 #endif
@@ -94,7 +94,7 @@ namespace MatrixLabWorkloads {
                 var logs=new DirectoryInfo(runtime).GetFiles("worker-*.txt").OrderByDescending(f=>f.LastWriteTimeUtc).ToArray();
                 foreach(var log in logs.Skip(9)) { try { log.Delete(); } catch(IOException) { } }
                 File.WriteAllText(Path.Combine(runtime,"worker-"+id.ToString("N")+".txt"),
-                    DateTime.UtcNow.ToString("o")+" Worker 2.6.0 started as "+Environment.UserDomainName+"\\"+Environment.UserName+
+                    DateTime.UtcNow.ToString("o")+" Worker 3.2.0 started as "+Environment.UserDomainName+"\\"+Environment.UserName+
                     "\r\nData: "+data+"\r\nAction: "+(values.ContainsKey("--power-report") ? "power report" : values.ContainsKey("--stop") ? "stop" : options.Mode));
                 stage="prune retained errors";
                 var errors = new DirectoryInfo(runtime).GetFiles("error-*.txt").OrderByDescending(f => f.LastWriteTimeUtc).ToArray();
@@ -122,7 +122,7 @@ namespace MatrixLabWorkloads {
             if ((string)run["RunId"] != id || (string)run["State"] != "RUNNING") return 0;
             string request = Path.Combine(runtime, "stop-" + id);
             File.WriteAllText(request, "stop");
-            int polls=(string)run["Mode"]=="office" ? 1000 : 150;
+            int polls=Array.IndexOf(new[]{"office","windows","rotation"},(string)run["Mode"])>=0 ? 1000 : 150;
             for (int i=0; i<polls; i++) {
                 Thread.Sleep(100);
                 run = Json.Deserialize<Dictionary<string, object>>(MatrixOffice.StatusFile.Read(manifest));
@@ -139,17 +139,21 @@ namespace MatrixLabWorkloads {
             Options current = baselineSeconds > 0 ? new Options { Mode="baseline", Seconds=baselineSeconds } : options;
             var phaseClock = Stopwatch.StartNew();
             object lastSnapshot = null;
-            using(var office=options.Mode=="office" ? new OfficeBridge(id,actorSid) : null) {
+            OfficeBridge office=null;
+            bool rotating=options.Mode=="rotation";
+            var rotation=new MatrixRainLab.RotationPlan(Guid.Parse(id).GetHashCode(),Environment.ProcessorCount);
+            string helperId=null;
+            try {
             Action<string,string,Result> publish = delegate(string state,string detail,Result result) {
                 string now=DateTime.UtcNow.ToString("o");
                 double phaseElapsed=phaseClock.Elapsed.TotalSeconds;
                 var snapshot = new { RunId=id, Hostname=Environment.MachineName, Pid=Process.GetCurrentProcess().Id,
-                    ActorSid=actorSid, ActorSession=actorSession, Office=office==null ? null : office.Progress,
-                    State=state, Mode=options.Mode, Phase=current.Mode, PhaseIndex=Math.Min(index+1,count), PhaseCount=count,
+                    ActorSid=actorSid, ActorSession=actorSession, HelperId=helperId, Office=office==null ? result==null ? null : result.Office : office.Progress,
+                    State=state, Mode=options.Mode, Phase=current.Mode, PhaseIndex=rotating ? index+1 : Math.Min(index+1,count), PhaseCount=rotating ? 0 : count,
                     StartedUtc=started, UpdatedUtc=now, PhaseStartedUtc=phaseStarted, PhaseSeconds=current.Seconds,
-                    PlannedSeconds=options.Seconds+baselineSeconds, ElapsedSeconds=total.Elapsed.TotalSeconds,
-                    PhaseElapsedSeconds=phaseElapsed, Detail=detail, Options=options, BaselineSeconds=baselineSeconds, Result=result, Phases=phases };
-                Write(statePath, new { State=state, ExperimentStartedUtc=started, WorkloadLabel=current.Mode.ToUpperInvariant()+" / "+(index+1)+" OF "+count,
+                    PlannedSeconds=rotating ? 0 : options.Seconds+baselineSeconds, ElapsedSeconds=total.Elapsed.TotalSeconds,
+                    PhaseElapsedSeconds=phaseElapsed, Detail=detail, Options=current, BaselineSeconds=baselineSeconds, Result=result, Phases=phases };
+                Write(statePath, new { State=state, ExperimentStartedUtc=started, WorkloadLabel=MatrixRainLab.WorkloadRequest.Label(current.Mode).ToUpperInvariant()+" / "+(index+1)+(rotating ? " / CONTINUOUS" : " OF "+count),
                     Detail=detail, HeartbeatUtc=now, RunId=id, Phase=current.Mode, RainEnabled=(bool?)(current.Mode!="baseline") });
                 Write(runPath,snapshot); lastSnapshot=snapshot;
             };
@@ -159,8 +163,21 @@ namespace MatrixLabWorkloads {
             var old=new DirectoryInfo(runtime).GetFiles("result-*.json").OrderByDescending(f=>f.LastWriteTimeUtc).ToArray();
             for(int i=19;i<old.Length;i++) old[i].Delete();
             try {
-                for(index=0;index<count;index++) {
-                    current=baselineSeconds>0 && index==0 ? new Options { Mode="baseline", Seconds=baselineSeconds } : options;
+                for(index=0;rotating || index<count;index++) {
+                    if(rotating) {
+                        // Alternate randomly selected activity with genuine screensaver-only rest.
+                        // Rotation never includes Microsoft 365; pressure is intentionally capped.
+                        var selected=rotation.Next();
+                        current=new Options { Mode=selected.Mode, Seconds=selected.Seconds, Intensity=selected.Intensity,
+                            Threads=selected.Threads, MemoryMiB=selected.MemoryMiB, DiskMiB=selected.DiskMiB,
+                            WriteLimitMiB=selected.WriteLimitMiB, DiskMiBPerSecond=selected.DiskMiBPerSecond };
+#if PORTABLE_TEST
+                        // Accelerated transitions only in the portable test host, never shipped EXEs.
+                        current.Seconds=1;
+#endif
+                    } else current=baselineSeconds>0 && index==0 ? new Options { Mode="baseline", Seconds=baselineSeconds } : options;
+                    helperId=Guid.NewGuid().ToString("N");
+                    if(current.Mode=="office" || current.Mode=="windows") office=new OfficeBridge(helperId,actorSid);
                     phaseStarted=DateTime.UtcNow.ToString("o"); phaseClock.Restart();
                     // Check between phases as well as inside the engine. A stop during baseline cancels the whole experiment.
                     if(File.Exists(stopPath)) { publish("IDLE","stopped by operator before "+current.Mode,null); break; }
@@ -170,13 +187,17 @@ namespace MatrixLabWorkloads {
                         delegate { return File.Exists(stopPath); },
                         delegate(Result result) { if(office!=null) office.Check(); publish("RUNNING","Active / "+current.Mode,result); });
                     Result final;
-                    if(current.Mode=="office") final=office.Run(current,delegate { return File.Exists(stopPath); },delegate(Result result) {
+                    if(current.Mode=="office" || current.Mode=="windows") final=office.Run(current,delegate { return File.Exists(stopPath); },delegate(Result result) {
                         var progress=office.Progress; publish("RUNNING",progress==null ? "Waiting for signed-in Office helper" : "Office / "+progress.Activity,result);
                     });
                     else final=engine.Run();
                     phases.Add(new { Phase=current.Mode, StartedUtc=phaseStarted, EndedUtc=DateTime.UtcNow.ToString("o"), Result=final });
+                    Write(Path.Combine(runtime,"last-phase.json"),new { RunId=id,Phase=current.Mode,Result=final,EndedUtc=DateTime.UtcNow.ToString("o") });
+                    if(office!=null) { office.Dispose(); office=null; }
+                    // Bound status size during indefinite runs; last-phase.json retains the latest result.
+                    if(phases.Count>32) phases.RemoveAt(0);
                     if(final.Reason=="stopped by operator" || File.Exists(stopPath)) { publish("IDLE","stopped by operator during "+current.Mode,final); break; }
-                    if(index==count-1) {
+                    if(!rotating && index==count-1) {
                         string detail=final.Reason;
                         if(current.Mode=="science" && final.Pi.HasValue) detail+=" / pi ~ "+final.Pi.Value.ToString("F6",System.Globalization.CultureInfo.InvariantCulture);
                         publish("COMPLETED",detail,final);
@@ -193,7 +214,7 @@ namespace MatrixLabWorkloads {
                 Write(Path.Combine(runtime,"last-result.json"),lastSnapshot);
                 Console.Error.WriteLine(e.ToString()); return 1;
             } finally { if(File.Exists(stopPath)) File.Delete(stopPath); }
-            }
+            } finally { if(office!=null) office.Dispose(); }
         }
     }
 }

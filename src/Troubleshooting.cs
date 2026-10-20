@@ -54,7 +54,8 @@ namespace MatrixRainLab {
                         } catch(Exception e) { report.AppendLine("Cannot list "+folder+": "+e.Message); }
                     };
                     foreach(string name in new[]{"config.json","state.json","browser-sites.json"}) collect(Path.Combine(data,name),"data/"+name);
-                    foreach(string name in new[]{"run.json","last-result.json"}) collect(Path.Combine(data,"workloads",name),"workloads/"+name);
+                    foreach(string name in new[]{"run.json","last-result.json","last-phase.json"}) collect(Path.Combine(data,"workloads",name),"workloads/"+name);
+                    collect(Path.Combine(local,"appearance.json"),"display/appearance.json");
                     group(Path.Combine(data,"workloads"),"result-*.json",20,"workloads/");
                     group(Path.Combine(data,"workloads"),"error-*.txt",20,"workloads/");
                     group(Path.Combine(data,"workloads"),"worker-*.txt",10,"workloads/");
@@ -63,7 +64,7 @@ namespace MatrixRainLab {
                     string officeRoot=Path.Combine(local,"office");
                     if(Directory.Exists(officeRoot)) foreach(var folder in new DirectoryInfo(officeRoot).GetDirectories().OrderByDescending(d=>d.LastWriteTimeUtc).Take(5)) {
                         if((folder.Attributes&FileAttributes.ReparsePoint)!=0) continue;
-                        foreach(string name in new[]{"actions.log","summary.json","schedule.json"}) collect(Path.Combine(folder.FullName,name),"office/"+folder.Name+"/"+name);
+                        foreach(string name in new[]{"actions.log","summary.json","schedule.json","studio-brief.json"}) collect(Path.Combine(folder.FullName,name),"office/"+folder.Name+"/"+name);
                     }
                     group(Path.Combine(local,"logs"),"samples-*.csv",1,"display/");
                     foreach(string name in new[]{"MatrixRainLab.exe","MatrixLabWorker.exe","MatrixOfficeActor.exe"}) {

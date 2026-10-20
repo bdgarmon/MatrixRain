@@ -7,6 +7,7 @@ using System.Web.Script.Serialization;
 namespace MatrixRainLab {
     internal sealed class RunStatus {
         public string RunId { get; set; }
+        public string HelperId { get; set; }
         public string ActorSid { get; set; }
         public int ActorSession { get; set; }
         public MatrixOffice.OfficeProgress Office { get; set; }
@@ -91,11 +92,11 @@ namespace MatrixRainLab {
             RefreshRun(); if(!CanStart) return;
             try {
                 request.Validate(); string id=Guid.NewGuid().ToString("N"); string args=request.Arguments(directory,Guid.Parse(id));
-                if(request.Mode=="office") {
+                if(request.Mode=="office" || request.Mode=="windows" || request.Mode=="rotation") {
 #if !PORTABLE_TEST
                     using(var identity=System.Security.Principal.WindowsIdentity.GetCurrent()) {
                         if(new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
-                            throw new InvalidOperationException("Open the display normally, without Run as administrator, for Office workday.");
+                            throw new InvalidOperationException("Open the display normally, without Run as administrator, for Microsoft 365 Testing.");
                         args+=" --actor-sid "+identity.User.Value+" --actor-session "+System.Diagnostics.Process.GetCurrentProcess().SessionId;
                     }
 #endif
@@ -121,7 +122,7 @@ namespace MatrixRainLab {
         void Launch(string args,string id,string target) {
             if(busy) return;
             try {
-                if(!File.Exists(worker)) throw new FileNotFoundException("Install version 2.6.0 of the workload runner first.");
+                if(!File.Exists(worker)) throw new FileNotFoundException("Install version 3.2.0 of the workload runner first.");
                 busy=true; CanStart=CanStop=false;
                 pendingId=id; stopTarget=target; pendingSince=DateTime.UtcNow; launchObserved=false;
                 Message="Requesting administrator approval... Windows may take time to show the credential prompt.";

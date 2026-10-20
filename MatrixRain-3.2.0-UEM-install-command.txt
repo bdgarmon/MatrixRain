@@ -1,0 +1,1 @@
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '.\MatrixRain-3.2.0-UEM.zip' -DestinationPath '.\payload-v320' -Force; & '.\payload-v320\MatrixRain\deployment\Install.ps1'"

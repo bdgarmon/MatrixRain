@@ -82,6 +82,15 @@ class Check {
         new MatrixRainLab.WorkloadRequest { Mode="office", Seconds=21600 }.Validate(); Assert(true,"UI request supports six hours plus baseline");
         new Options { Mode="office", Seconds=21600 }.Validate(); Assert(true,"Worker accepts the same six-hour duration");
         var rotation=new MatrixRainLab.TestRotation(1,null);Assert(Enumerable.Range(0,100).Select(_=>rotation.Next()).All(m=>m!="office"),"Long Office session never enters short random rotation");
+        var rotationPolicy=new MatrixRainLab.RotationPlan(923,12);
+        var phases=Enumerable.Range(0,1200).Select(_=>rotationPolicy.Next()).ToArray();
+        Assert(phases.All(p=>p.Mode!="office" && p.Mode!="baseline" && p.Mode!="rotation"),"Continuous rotation excludes Microsoft 365 and dark baseline");
+        Assert(phases.Where((p,i)=>i%2==1).All(p=>p.Mode=="visualization"),"Every random activity has a screensaver-only recovery phase");
+        Assert(phases.Any(p=>p.Mode=="windows"),"Windows Workday participates in rotation");
+        Assert(phases.All(p=>p.Seconds>=180 && p.Seconds<=720 && p.Intensity<=55 && p.Threads<=2 && p.MemoryMiB<=512 && p.WriteLimitMiB==128 && p.DiskMiBPerSecond==2),"Rotation pressure and duration caps apply across 1200 phases");
+        Assert(phases.Select(p=>p.Seconds).Distinct().Count()>100 && phases.Select(p=>p.Intensity).Distinct().Count()>20,"Rotation varies duration and duty cycle");
+        foreach(var p in phases) p.Validate(); Assert(true,"Every generated phase passes worker request validation");
+        new MatrixRainLab.WorkloadRequest { Mode="windows",Seconds=21600 }.Validate(); Assert(true,"Windows Workday accepts a six-hour standalone run");
         var selections=Enumerable.Range(0,100).Select(seed=>BrowserPlan.Choose(true,true,seed)).ToArray();
         Assert(selections.Any(x=>x.Length==2) && selections.Any(x=>x.Length==1 && x[0].Name=="Edge") && selections.Any(x=>x.Length==1 && x[0].Name=="Chrome"),"Browser selection covers Edge, Chrome, and both");
         Assert(selections.SelectMany(x=>x).All(x=>x.Tabs>=8 && x.Tabs<=15),"Every selected browser requests eight to fifteen tabs");
